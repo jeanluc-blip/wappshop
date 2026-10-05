@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WappShop</title>
+<style>
+:root{--bg:#fff;--bg2:#f4f5f7;--tx:#111827;--mu:#6b7280;--bd:#e5e7eb;--g:#25d366;--gh:#1ebe5a;--on:#0b1220;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.w{max-width:640px;margin:0 auto;padding:16px 16px 96px}
+.top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+.top img.lg{width:36px;height:36px;border-radius:8px}.top b{font-size:17px}.sp{flex:1}
+h2{font-size:20px;margin:8px 0 14px}h3{font-size:16px;margin:0 0 8px}
+.btn{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);cursor:pointer;font-weight:600}
+.btn.g{background:var(--g);border-color:var(--g);color:var(--on)}.btn.g:hover{background:var(--gh)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13px}.btn.w100{width:100%}.btn.r{color:#dc2626}
+input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--bg);margin-bottom:10px}
+label{font-size:13px;color:var(--mu);display:block;margin-bottom:4px}
+.card{border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--bg)}
+.row{display:flex;gap:8px;align-items:center}.row>*{margin-bottom:0}
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--bg);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:6}
+.nav button{flex:1;min-height:56px;border:0;background:none;color:var(--mu);font-size:12px;cursor:pointer}.nav button.on{color:var(--tx);font-weight:700;box-shadow:inset 0 -3px var(--g)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.ph{aspect-ratio:1;border-radius:12px;background:var(--bg2);display:grid;place-items:center;font-size:34px;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr)}}
+.pc{display:flex;flex-direction:column;gap:6px}.pc .n{font-weight:600;line-height:1.25}.pc .p{color:var(--mu)}
+.qty{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--bd);border-radius:12px;height:40px}
+.qty button{width:40px;height:100%;border:0;background:none;font-size:20px;cursor:pointer}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:4;scrollbar-width:none}
+.chip{flex:none;min-height:36px;padding:0 14px;border-radius:99px;border:1px solid var(--bd);background:var(--bg);cursor:pointer}.chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:7;max-width:616px;margin:0 auto}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end}
+.sheet>div{background:var(--bg);width:100%;max-width:640px;margin:0 auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow:auto}
+.st{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--bg2)}.st.new{background:#fef3c7;color:#92400e}.st.confirmed{background:#dbeafe;color:#1e40af}.st.delivered{background:#dcfce7;color:#166534}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.thumbs .t{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;background:var(--bg2)}.thumbs img{width:100%;height:100%;object-fit:cover}.thumbs button{position:absolute;top:2px;right:2px;width:24px;height:24px;border-radius:99px;border:0;background:rgba(0,0,0,.65);color:#fff;cursor:pointer}
+.mu{color:var(--mu);font-size:13px}.c{text-align:center}
+.toast{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:50;font-size:14px}
+.auth{max-width:380px;margin:0 auto;padding:40px 20px}.auth img{width:84px;height:84px;border-radius:18px;display:block;margin:0 auto 12px}
+:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+</style></head><body><div id="app"></div><div id="ov"></div>
+<script>
+const LOGO="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22 width=%22256%22 height=%22256%22 role=%22img%22 aria-label=%22WappShop%22%3E%3Cpath d=%22M21 25v-6a11 11 0 0 1 22 0v6%22 fill=%22none%22 stroke=%22%23111827%22 stroke-width=%224.5%22 stroke-linecap=%22round%22/%3E%3Crect x=%229%22 y=%2222%22 width=%2240%22 height=%2236%22 rx=%228%22 fill=%22%23111827%22/%3E%3Cpath d=%22M33 58l-3 6 11-5z%22 fill=%22%2325D366%22 stroke=%22%23fff%22 stroke-width=%223%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2226%22 y=%2233%22 width=%2234%22 height=%2226%22 rx=%229%22 fill=%22%2325D366%22 stroke=%22%23fff%22 stroke-width=%223%22/%3E%3Cpath d=%22M32 41l4 11 5-8 5 8 4-11%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%223.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E";
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CUR='FCFA',fmt=n=>Number(n).toLocaleString('fr-FR')+' '+CUR,uid=()=>Math.random().toString(36).slice(2,9);
+const seed=()=>({user:null,shop:{name:'Boutique Démo',logo:'',wa:'22900000000',slug:'boutique-demo'},
+ cats:[{id:'c1',name:'Vêtements'},{id:'c2',name:'Chaussures'}],
+ prods:[{id:'p1',name:'T-shirt coton',price:5000,desc:'Coupe droite, 100 % coton.',cat:'c1',imgs:[],vars:[{n:'Taille',v:'M',s:0},{n:'Taille',v:'L',s:0},{n:'Taille',v:'XL',s:500},{n:'Couleur',v:'Noir',s:0},{n:'Couleur',v:'Blanc',s:0}]},
+ {id:'p2',name:'Baskets urbaines',price:18000,desc:'Semelle confort.',cat:'c2',imgs:[],vars:[{n:'Pointure',v:'41',s:0},{n:'Pointure',v:'42',s:0},{n:'Pointure',v:'43',s:0}]},
+ {id:'p3',name:'Casquette',price:3000,desc:'Taille ajustable.',cat:'c1',imgs:[],vars:[]}],orders:[]});
+let S;try{S=JSON.parse(localStorage.getItem('ws'))}catch(e){}S=S||seed();
+const save=()=>{try{localStorage.setItem('ws',JSON.stringify(S))}catch(e){toast('Stockage plein : réduisez les photos')}};
+let isShop=()=>location.hash.length>2&&location.hash.startsWith('#/'),route=isShop()?'shop':'auth',buyer=route==='shop',mode='login',tab='home',cat='all',cart=[],sheet=null,draft=null,drawer=false,ofilter='all';
+const go=(r,t)=>{route=r;if(t)tab=t;render()};
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
+const logo=()=>`<img class="lg" src="${LOGO}" alt="WappShop">`;
+const price=(p,sel)=>p.price+Object.entries(sel||{}).reduce((a,[n,v])=>a+(+(p.vars.find(x=>x.n===n&&x.v===v)||{}).s||0),0);
+const names=p=>[...new Set(p.vars.map(v=>v.n))];
+const ph=p=>`<div class="ph">${p.imgs[0]?`<img src="${p.imgs[0]}" alt="${esc(p.name)}">`:'🛍️'}</div>`;
+
+function render(){const a=$('#app');a.innerHTML=route==='auth'?viewAuth():route==='dash'?viewDash():viewShop();$('#ov').innerHTML=sheet?viewSheet():'';}
+
+/* ---------- AUTH ---------- */
+function viewAuth(){const l=mode==='login';return`<div class="auth"><img src="${LOGO}" alt="WappShop"><h2 class="c">WappShop</h2><p class="c mu">${l?'Connectez-vous pour gérer votre boutique.':'Créez votre boutique et recevez vos commandes sur WhatsApp.'}</p>
+<button class="btn w100" onclick="signIn('google@demo.com')" style="margin-bottom:14px">Continuer avec Google</button><p class="c mu">ou par email</p>
+<label>Email</label><input id="em" type="email" autocomplete="email" placeholder="vous@exemple.com"><label>Mot de passe</label><input id="pw" type="password" autocomplete="${l?'current-password':'new-password'}" placeholder="8 caractères minimum">
+<button class="btn g w100" onclick="signIn()">${l?'Se connecter':'Créer mon compte'}</button>
+<p class="c mu"><a href="#" onclick="mode='${l?'reg':'login'}';render();return false">${l?'Pas de compte ? Inscrivez-vous':'Déjà inscrit ? Connectez-vous'}</a></p></div>`}
+function signIn(g){const e=g||$('#em').value.trim(),p=g||$('#pw').value;if(!/^\S+@\S+\.\S+$/.test(e))return toast('Email invalide');if(p.length<8)return toast('Mot de passe : 8 caractères minimum');S.user=e;save();go('dash','home')}
+
+/* ---------- DASHBOARD ---------- */
+function viewDash(){const nn=S.orders.filter(o=>o.st==='new').length;
+const tabs=[['home','Accueil'],['cats','Catégories'],['prods','Catalogue'],['orders','Commandes'+(nn?` (${nn})`:'')]];
+return`<div class="top">${logo()}<b>WappShop</b><span class="sp"></span><button class="btn sm" onclick="S.user=null;save();go('auth')">Déconnexion</button></div>
+<div class="w">${tab==='home'?tHome():tab==='cats'?tCats():tab==='prods'?tProds():tOrders()}</div>
+<nav class="nav">${tabs.map(([k,l])=>`<button class="${tab===k?'on':''}" onclick="draft=null;go('dash','${k}')">${l}</button>`).join('')}</nav>`}
+const link=()=>location.href.split('#')[0]+'#/'+S.shop.slug;
+function tHome(){const s=S.shop;return`<h2>Ma boutique</h2>
+<div class="card"><label>Lien public de la boutique</label><div class="mu" style="word-break:break-all;margin-bottom:10px">${esc(link())}</div>
+<div class="row"><button class="btn g" style="flex:1" onclick="copyLink()">Copier le lien</button><button class="btn" onclick="buyer=false;route='shop';render()">Voir</button></div></div>
+<div class="card"><h3>Informations</h3><label>Nom de la boutique</label><input id="sn" value="${esc(s.name)}">
+<label>Adresse personnalisée de la boutique</label><input id="ss" value="${esc(s.slug)}" autocapitalize="none" placeholder="ma-boutique"><p class="mu" style="margin:-4px 0 10px">Version finale : wappshop.app/${esc(s.slug)}</p>
+<label>Numéro WhatsApp (format international, sans +)</label><input id="sw" inputmode="tel" value="${esc(s.wa)}" placeholder="22961000000">
+<label>Logo</label><div class="row"><div class="ph" style="width:64px;flex:none;font-size:22px">${s.logo?`<img src="${s.logo}" alt="">`:'🏪'}</div>
+<button type="button" class="btn" onclick="document.getElementById('lf').click()">Choisir un logo</button><input id="lf" class="sr" type="file" accept="image/*" onchange="upl(this,r=>{S.shop.logo=r[0];save();render()},1,300)"></div>
+<button class="btn g w100" style="margin-top:12px" onclick="saveShop()">Enregistrer</button></div>`}
+function saveShop(){const n=$('#sn').value.trim(),w=$('#sw').value.replace(/\D/g,'');if(!n)return toast('Le nom est obligatoire');if(w.length<8)return toast('Numéro WhatsApp invalide');
+const sl=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');const slug=sl(($('#ss').value||'')||n);if(slug.length<3)return toast("Adresse trop courte (3 caractères minimum)");if(['dashboard','login','register','admin','api','app','www'].includes(slug))return toast('Cette adresse est réservée');S.shop.name=n;S.shop.wa=w;S.shop.slug=slug;save();toast('Boutique enregistrée');render()}
+function copyLink(){const l=link();(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>toast('Lien copié')).catch(()=>{prompt('Copiez ce lien :',l)})}
+
+/* upload mobile : bouton réel -> input[type=file] ; compression canvas */
+function upl(inp,cb,max=8,px=900){const fs=[...inp.files].slice(0,max);inp.value='';if(!fs.length)return;let out=[],n=0;
+fs.forEach((f,i)=>{if(f.size>8e6){toast('Image trop lourde (8 Mo max)');if(++n===fs.length)cb(out.filter(Boolean));return}
+const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,px/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);out[i]=c.toDataURL('image/jpeg',.78);if(++n===fs.length)cb(out.filter(Boolean))};im.onerror=()=>{if(++n===fs.length)cb(out.filter(Boolean))};im.src=r.result};r.readAsDataURL(f)})}
+
+function tCats(){return`<h2>Catégories</h2><div class="card"><div class="row"><input id="nc" placeholder="Nouvelle catégorie"><button class="btn g" onclick="addCat()">Ajouter</button></div></div>
+${S.cats.length?S.cats.map(c=>`<div class="card row"><input value="${esc(c.name)}" onchange="renCat('${c.id}',this.value)" aria-label="Nom"><button class="btn r sm" onclick="delCat('${c.id}')">Supprimer</button></div>`).join(''):'<p class="mu c">Aucune catégorie. Ajoutez-en une pour organiser vos produits.</p>'}`}
+function addCat(){const v=$('#nc').value.trim();if(!v)return toast('Saisissez un nom');S.cats.push({id:uid(),name:v});save();render()}
+function renCat(id,v){v=v.trim();if(!v)return render();S.cats.find(c=>c.id===id).name=v;save();toast('Catégorie modifiée')}
+function delCat(id){if(!confirm('Supprimer cette catégorie ? Les produits seront conservés sans catégorie.'))return;S.cats=S.cats.filter(c=>c.id!==id);S.prods.forEach(p=>{if(p.cat===id)p.cat=''});save();render()}
+
+function tProds(){if(draft)return fProd();return`<div class="row" style="justify-content:space-between"><h2>Catalogue</h2><button class="btn g sm" onclick="draft={id:'',name:'',price:'',desc:'',cat:'',imgs:[],vars:[]};render()">Ajouter un produit</button></div>
+${S.prods.length?S.prods.map(p=>`<div class="card row">${'<div style="width:64px;flex:none">'+ph(p)+'</div>'}<div style="flex:1"><b>${esc(p.name)}</b><div class="mu">${fmt(p.price)} · ${esc((S.cats.find(c=>c.id===p.cat)||{}).name||'Sans catégorie')}</div></div>
+<button class="btn sm" onclick="draft=JSON.parse(JSON.stringify(S.prods.find(x=>x.id==='${p.id}')));render()">Modifier</button></div>`).join(''):'<p class="mu c">Votre catalogue est vide. Ajoutez votre premier produit.</p>'}`}
+function fProd(){const d=draft;return`<h2>${d.id?'Modifier le produit':'Nouveau produit'}</h2>
+<div class="card"><label>Titre</label><input value="${esc(d.name)}" oninput="draft.name=this.value"><label>Prix (${CUR})</label><input type="number" inputmode="numeric" min="0" value="${d.price}" oninput="draft.price=this.value">
+<label>Description</label><textarea rows="3" oninput="draft.desc=this.value">${esc(d.desc)}</textarea>
+<label>Catégorie</label><select onchange="draft.cat=this.value"><option value="">Sans catégorie</option>${S.cats.map(c=>`<option value="${c.id}" ${d.cat===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+<div class="card"><h3>Photos (${d.imgs.length}/8)</h3><div class="thumbs">${d.imgs.map((m,i)=>`<div class="t"><img src="${m}" alt=""><button type="button" aria-label="Retirer" onclick="draft.imgs.splice(${i},1);render()">×</button></div>`).join('')}</div>
+<button type="button" class="btn w100" onclick="document.getElementById('pf').click()">Ajouter des photos</button><input id="pf" class="sr" type="file" accept="image/*" multiple onchange="upl(this,r=>{draft.imgs=draft.imgs.concat(r).slice(0,8);render()},8-draft.imgs.length)">
+<p class="mu">La première photo est l'image principale.</p></div>
+<div class="card"><h3>Variantes</h3>${d.vars.map((v,i)=>`<div class="row" style="margin-bottom:8px"><input placeholder="Option (Taille)" value="${esc(v.n)}" oninput="draft.vars[${i}].n=this.value"><input placeholder="Valeur (L)" value="${esc(v.v)}" oninput="draft.vars[${i}].v=this.value"><input type="number" placeholder="+ prix" value="${v.s||''}" oninput="draft.vars[${i}].s=+this.value||0"><button class="btn r sm" onclick="draft.vars.splice(${i},1);render()" aria-label="Retirer">×</button></div>`).join('')}
+<button type="button" class="btn sm" onclick="draft.vars.push({n:'${(d.vars.at(-1)||{}).n||''}',v:'',s:0});render()">Ajouter une variante</button></div>
+<div class="row"><button class="btn" onclick="draft=null;render()">Annuler</button><button class="btn g" style="flex:1" onclick="saveProd()">Enregistrer le produit</button></div>
+${d.id?`<button class="btn r w100" style="margin-top:12px" onclick="delProd()">Supprimer le produit</button>`:''}`}
+function saveProd(){const d=draft;if(!d.name.trim())return toast('Le titre est obligatoire');if(!(+d.price>=0)||d.price==='')return toast('Prix invalide');
+d.price=+d.price;d.vars=d.vars.filter(v=>v.n.trim()&&v.v.trim());if(d.id)S.prods=S.prods.map(p=>p.id===d.id?d:p);else{d.id=uid();S.prods.push(d)}draft=null;save();toast('Produit enregistré');render()}
+function delProd(){if(!confirm('Supprimer ce produit ?'))return;S.prods=S.prods.filter(p=>p.id!==draft.id);draft=null;save();render()}
+
+const LBL={new:'Nouvelle',confirmed:'Confirmée',delivered:'Livrée'};
+function tOrders(){const L=S.orders.filter(o=>ofilter==='all'||o.st===ofilter);return`<h2>Commandes</h2><div class="row" style="margin-bottom:12px;overflow-x:auto">${[['all','Toutes'],...Object.entries(LBL)].map(([k,l])=>`<button class="chip ${ofilter===k?'on':''}" onclick="ofilter='${k}';render()">${l}</button>`).join('')}</div>
+${L.length?L.map(o=>`<div class="card"><div class="row" style="justify-content:space-between"><b>Commande ${o.no}</b><span class="st ${o.st}">${LBL[o.st]}</span></div><div class="mu">${new Date(o.at).toLocaleString('fr-FR')}${o.cust?' · '+esc(o.cust):''}</div>
+<ul style="padding-left:18px;margin:8px 0">${o.items.map(i=>`<li>${esc(i.name)}${i.opt?' ('+esc(i.opt)+')':''} × ${i.q} — ${fmt(i.sub)}</li>`).join('')}</ul><div class="row" style="justify-content:space-between"><b>${fmt(o.total)}</b>
+<select style="width:auto;margin:0" onchange="setSt('${o.id}',this.value)" aria-label="Statut">${Object.entries(LBL).map(([k,l])=>`<option value="${k}" ${o.st===k?'selected':''}>${l}</option>`).join('')}</select></div></div>`).join(''):'<p class="mu c">Aucune commande pour le moment. Partagez le lien de votre boutique pour en recevoir.</p>'}`}
+function setSt(id,v){S.orders.find(o=>o.id===id).st=v;save();render()}
+
+/* ---------- BOUTIQUE PUBLIQUE ---------- */
+const qOf=id=>cart.filter(c=>c.pid===id).reduce((a,c)=>a+c.q,0);
+const total=()=>cart.reduce((a,c)=>a+price(S.prods.find(p=>p.id===c.pid),c.sel)*c.q,0),count=()=>cart.reduce((a,c)=>a+c.q,0);
+function viewShop(){const s=S.shop,L=S.prods.filter(p=>cat==='all'||p.cat===cat);
+return`<div class="top">${s.logo?`<img class="lg" src="${s.logo}" alt="">`:logo()}<b>${esc(s.name)}</b><span class="sp"></span>${buyer?'':`<button class="btn sm" onclick="go('dash','home')">Retour</button>`}</div>
+<div class="chips"><button class="chip ${cat==='all'?'on':''}" onclick="cat='all';render()">Tout</button>${S.cats.map(c=>`<button class="chip ${cat===c.id?'on':''}" onclick="cat='${c.id}';render()">${esc(c.name)}</button>`).join('')}</div>
+<div class="w"><div class="grid">${L.map(p=>`<div class="pc"><div onclick="sheet={t:'d',id:'${p.id}',sel:{},i:0};render()" style="cursor:pointer">${ph(p)}</div><div class="n">${esc(p.name)}</div><div class="p">${fmt(p.price)}${p.vars.length?' · options':''}</div>
+<div class="qty"><button aria-label="Retirer un" onclick="chg('${p.id}',-1)">−</button><b>${qOf(p.id)}</b><button aria-label="Ajouter un" onclick="chg('${p.id}',1)">+</button></div></div>`).join('')}</div>
+${L.length?'':'<p class="mu c">Aucun produit dans cette catégorie.</p>'}<p class="mu c" style="margin-top:32px">Propulsé par WappShop</p></div>
+${count()?`<div class="bar"><button class="btn g w100" onclick="sheet={t:'c'};render()">Voir mon panier (${count()}) · ${fmt(total())}</button></div>`:''}`}
+function chg(id,d){const p=S.prods.find(x=>x.id===id);if(d>0){if(p.vars.length)return sheet={t:'v',id,sel:{}},render();add(id,{},1)}else{const i=cart.map(c=>c.pid).lastIndexOf(id);if(i<0)return;if(--cart[i].q<=0)cart.splice(i,1)}render()}
+function add(pid,sel,q){const k=JSON.stringify(sel),c=cart.find(x=>x.pid===pid&&JSON.stringify(x.sel)===k);c?c.q+=q:cart.push({pid,sel,q})}
+function viewSheet(){const x=sheet;let h='';
+if(x.t==='v'||x.t==='d'){const p=S.prods.find(q=>q.id===x.id),ok=names(p).every(n=>x.sel[n]);
+h=`${x.t==='d'?`<div class="thumbs" style="overflow-x:auto;flex-wrap:nowrap">${(p.imgs.length?p.imgs:[null]).map(m=>`<div class="t" style="width:140px;height:140px;flex:none">${m?`<img src="${m}" alt="">`:'<div class="ph" style="height:100%">🛍️</div>'}</div>`).join('')}</div>`:''}<h3>${esc(p.name)}</h3>${x.t==='d'?`<p class="mu">${esc(p.desc)}</p>`:''}
+${names(p).map(n=>`<label>${esc(n)}</label><div class="row" style="flex-wrap:wrap;margin-bottom:10px">${p.vars.filter(v=>v.n===n).map(v=>`<button class="chip ${x.sel[n]===v.v?'on':''}" onclick="sheet.sel['${esc(n).replace(/'/g,"\\'")}']='${esc(v.v).replace(/'/g,"\\'")}';render()">${esc(v.v)}${v.s?` (+${fmt(v.s)})`:''}</button>`).join('')}</div>`).join('')}
+<button class="btn g w100" ${ok?'':'disabled style="opacity:.5"'} onclick="add('${p.id}',sheet.sel,1);sheet=null;render()">Ajouter · ${fmt(price(p,x.sel))}</button>`}
+else if(x.t==='ok')h=`<h3>Commande ${x.no} prête</h3><p class="mu">Touchez le bouton pour l'envoyer au vendeur sur WhatsApp. Si WhatsApp ne s'ouvre pas, copiez le message et envoyez-le vous-même.</p>
+<a class="btn g w100" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:10px" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">Ouvrir WhatsApp</a>
+<button class="btn w100" onclick="copyMsg()">Copier le message</button><pre style="white-space:pre-wrap;font:13px/1.4 inherit;background:var(--bg2);border-radius:12px;padding:12px;margin-top:12px">${esc(x.msg)}</pre>`;
+else h=`<h3>Mon panier</h3>${cart.map((c,i)=>{const p=S.prods.find(q=>q.id===c.pid);return`<div class="row" style="margin-bottom:10px"><div style="flex:1"><b>${esc(p.name)}</b><div class="mu">${esc(Object.values(c.sel).join(', '))}${Object.keys(c.sel).length?' · ':''}${fmt(price(p,c.sel))}</div></div>
+<div class="qty" style="width:110px"><button onclick="cart[${i}].q--;if(cart[${i}].q<1)cart.splice(${i},1);if(!cart.length)sheet=null;render()">−</button><b>${c.q}</b><button onclick="cart[${i}].q++;render()">+</button></div></div>`}).join('')}
+<div class="row" style="justify-content:space-between;margin:14px 0"><b>Total</b><b>${fmt(total())}</b></div><label>Votre nom (facultatif)</label><input id="cn" autocomplete="name">
+<button class="btn g w100" onclick="checkout()">Valider ma commande sur WhatsApp</button>`;
+return`<div class="sheet" onclick="if(event.target===this){sheet=null;render()}"><div>${h}</div></div>`}
+function checkout(){if(!cart.length)return;const s=S.shop,no='WS-'+String(S.orders.length+1).padStart(4,'0'),cust=($('#cn')||{}).value||'';
+const items=cart.map(c=>{const p=S.prods.find(q=>q.id===c.pid),u=price(p,c.sel);return{name:p.name,opt:Object.values(c.sel).join(', '),q:c.q,unit:u,sub:u*c.q}}),t=total();
+S.orders.unshift({id:uid(),no,items,total:t,st:'new',at:Date.now(),cust:cust.trim()});save();
+const msg=`*Nouvelle commande - ${s.name}*\nCommande n° ${no}${cust?`\nClient : ${cust.trim()}`:''}\n\n`+items.map((i,k)=>`${k+1}. ${i.name}${i.opt?` (${i.opt})`:''} x${i.q} — ${fmt(i.sub)}`).join('\n')+`\n\n*Total : ${fmt(t)}*\n\nMerci de confirmer la disponibilité et les modalités de livraison.`;
+const url='https://wa.me/'+s.wa.replace(/\D/g,'')+'?text='+encodeURIComponent(msg);cart=[];sheet={t:'ok',url,msg,no};render();if(s.wa==='22900000000')toast('Numéro de démonstration : configurez le vôtre dans Accueil');}
+function copyMsg(){const m=sheet.msg;(navigator.clipboard?navigator.clipboard.writeText(m):Promise.reject()).then(()=>toast('Message copié')).catch(()=>prompt('Copiez le message :',m))}
+addEventListener('hashchange',()=>{if(isShop()){buyer=true;route='shop';render()}});
+render();
+</script></body></html>
