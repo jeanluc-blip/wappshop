@@ -59,7 +59,8 @@ src/
 │  │  ├─ products/page.tsx            # liste
 │  │  ├─ products/new/page.tsx
 │  │  ├─ products/[id]/page.tsx       # édition
-│  │  └─ orders/page.tsx              # onglet Commandes
+│  │  ├─ orders/page.tsx              # onglet Commandes
+│  │  └─ stats/page.tsx               # onglet Statistiques
 │  ├─ [slug]/page.tsx                 # ESPACE ACHETEUR (public) → wappshop.app/ma-boutique
 │  └─ api/orders/route.ts             # enregistrement d'une commande avant redirection WhatsApp
 ├─ components/
@@ -147,6 +148,21 @@ Merci de confirmer la disponibilité et les modalités de livraison.
 - Ne jamais compter uniquement sur `window.open` : les pop-ups peuvent être bloqués (navigateurs mobiles, pages intégrées dans un cadre). Le lien cliquable de l'écran de confirmation est la voie fiable.
 - Valider le numéro WhatsApp (8 à 15 chiffres) à l'enregistrement et avertir si c'est un numéro de démonstration : un numéro invalide fait afficher une erreur côté WhatsApp.
 
+## 6 bis. Suivi, statistiques et avis clients
+
+### Statistiques vendeur (onglet « Stats »)
+- Périodes : aujourd'hui, 7 jours, 30 jours.
+- Indicateurs : **visiteurs** (visites anonymes uniques par session), **commandes envoyées** (clic sur « Valider sur WhatsApp »), **commandes livrées** (statut passé en `Livrée` par le vendeur), **taux de conversion** (commandes ÷ visiteurs, plafonné à 100 %) et note moyenne.
+- Précision à afficher : l'application ne peut pas savoir si le message WhatsApp a réellement été envoyé ; seul le statut du vendeur fait foi.
+- Comptage respectueux de la vie privée : aucun cookie de suivi tiers, aucune donnée personnelle ; un identifiant de session anonyme suffit.
+
+### Preuve de confiance et avis (boutique publique)
+- **Version 1** : sous le nom de la boutique, afficher « N commandes livrées » (calculé depuis les commandes au statut `Livrée`).
+- **Version 2** : vraies étoiles (1 à 5) données par les clients, plus un commentaire facultatif (300 caractères max). Aucune étoile n'est calculée automatiquement à partir des statistiques.
+- Le vendeur copie, depuis une commande livrée, un message contenant un **lien d'avis à usage unique** (`/{slug}/avis/{review_token}`) et l'envoie lui-même au client sur WhatsApp.
+- Règles anti-fraude : avis possible **uniquement si la commande est `Livrée`**, **un seul avis par commande**, jeton aléatoire non devinable (uuid), validation et limitation de débit côté serveur ; le vendeur ne peut ni créer, ni modifier, ni supprimer un avis (il peut seulement le signaler).
+- Affichage : moyenne et nombre d'avis en haut de la boutique ; liste des derniers avis dans l'onglet Stats.
+
 ## 7. Base de données (PostgreSQL / Supabase)
 
 > Le « Vendeur » correspond à `auth.users` de Supabase (email + mot de passe hashé gérés par Supabase Auth). Ne jamais stocker de mot de passe en clair ni créer de table de mots de passe.
@@ -160,7 +176,12 @@ Merci de confirmer la disponibilité et les modalités de livraison.
 | `variants` | `id`, `product_id` (FK, `on delete cascade`), `variant_name` (ex : Couleur, Taille), `variant_value` (ex : Rouge, L), `price_supplement` (numeric, défaut 0) |
 | `orders` | `id`, `shop_id` (FK), `order_number`, `items_details` (jsonb), `total_amount` (numeric), `status` (enum : `new` \| `confirmed` \| `delivered`), `customer_name` (nullable), `created_at` |
 
+| `events` | `id`, `shop_id` (FK), `type` (`visit` \| `order_sent`), `session_id` (anonyme), `created_at` |
+| `reviews` | `id`, `shop_id` (FK), `order_id` (FK, **unique**), `rating` (1 à 5), `comment`, `created_at` |
+
 Notes :
+- `orders` reçoit aussi `review_token` (uuid aléatoire) et `reviewed_at` (nullable).
+- RLS : `reviews` lisible publiquement (sans données personnelles) mais créée uniquement via la route API avec jeton valide et commande `Livrée` ; `events` écrit via API, lu uniquement par le vendeur propriétaire.
 - `items_details` stocke un **instantané** des articles (nom, variantes choisies, quantité, prix unitaire, sous-total) pour que la commande reste lisible même si le produit change ensuite.
 - **Recalculer le total côté serveur** dans `/api/orders` à partir des prix en base : ne jamais faire confiance au total envoyé par le navigateur.
 - Ajouter des index sur `shop_id`, `product_id`, `slug`.
@@ -172,6 +193,20 @@ Notes :
 - Lecture **publique** (anonyme) autorisée uniquement sur `shops`, `categories`, `products`, `images`, `variants` pour la boutique publique ; **jamais** sur `orders`.
 - Création de commande : uniquement via la route API serveur (clé service role), avec validation zod et limitation de débit simple.
 - Buckets Storage : `logos` et `product-images` en lecture publique ; écriture limitée au dossier `{user_id}/…` du vendeur connecté.
+
+## 7b. Statistiques et avis clients
+
+### Statistiques (onglet « Stats » du tableau de bord, réservé au vendeur)
+- Table `events` : `id`, `shop_id`, `type` (`visit` ou `checkout`), `session_id` (identifiant anonyme aléatoire, aucune donnée personnelle), `created_at`. Écriture uniquement via une route API serveur ; lecture limitée au propriétaire de la boutique (RLS).
+- Indicateurs sur 3 périodes (aujourd'hui, 7 jours, 30 jours) : **visiteurs** (1 par session), **commandes envoyées** (clics sur « Valider ma commande » : ne prouve pas que le message est parti), **commandes livrées** (statut `delivered` : seuls vrais achats confirmés), **taux de conversion** (commandes / visiteurs), **chiffre d'affaires livré**, **note moyenne et derniers avis**.
+- Ne pas compter le propriétaire connecté ni les robots ; états vides explicites ; expliquer sous les chiffres ce que mesure chaque indicateur.
+
+### Avis clients (espace acheteur)
+- Table `reviews` : `id`, `order_id` (FK, **unique** : un avis par commande), `shop_id`, `rating` (1 à 5), `comment` (300 caractères max, facultatif), `created_at`. La table `orders` reçoit une colonne `review_token` (uuid unique, non devinable).
+- Lien d'avis : `https://wappshop.app/{slug}/avis/{review_token}`. Il ne fonctionne **que si la commande est `delivered`** et qu'aucun avis n'existe déjà. Le vendeur le copie depuis la commande livrée (« Copier la demande d'avis ») et l'envoie au client sur WhatsApp, en texte brut sans emoji.
+- Le vendeur **ne peut ni créer, ni modifier, ni supprimer** un avis (insertion uniquement via la route API avec le jeton, aucune politique d'écriture vendeur). Prévoir plus tard un signalement.
+- Affichage honnête en haut de la boutique publique : note moyenne en étoiles et nombre d'avis **seulement s'il y a au moins un avis**, plus « N commandes livrées » s'il y en a. Rien ne s'affiche tant qu'il n'y a pas de données réelles.
+- Dans le prototype, les visites de démonstration sont simulées ; la vraie application ne doit afficher que des données réelles.
 
 ## 8. Design, UX et image de marque
 
@@ -189,6 +224,8 @@ Notes :
 ## 9. Périmètre du MVP
 
 **Inclus** : tout ce qui est décrit ci-dessus.
+
+**Ajouts validés** : statistiques vendeur et avis clients (section 7b), à construire après l'étape 9 du plan.
 
 **Exclus pour l'instant** (ne pas développer sans demande explicite) : paiement en ligne, gestion de stock, codes promo, multi-boutiques par vendeur, domaine personnalisé, statistiques avancées, notifications push, multilingue.
 
