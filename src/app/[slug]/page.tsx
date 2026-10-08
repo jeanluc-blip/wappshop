@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: shop.name,
       description,
       url: shopUrl(slug),
-      siteName: "WappShop",
+      siteName: "WappShop",  "icon", "logo", "favicon", "robots", "sitemap", "legal", "contact", "aide", "faq", "about", "confidentialite", "conditions",
       locale: "fr_FR",
       images: shop.logoUrl ? [{ url: shop.logoUrl }] : undefined,
     },
