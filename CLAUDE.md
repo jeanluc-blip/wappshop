@@ -15,7 +15,7 @@
 | Framework | Next.js 14+ (App Router) + TypeScript strict |
 | UI | Tailwind CSS + composants shadcn/ui (minimalistes) + icônes lucide-react |
 | Backend / BDD | Supabase (PostgreSQL, Auth, Storage, Row Level Security) |
-| Auth | Supabase Auth : email + mot de passe et Google OAuth |
+| Auth | Supabase Auth : code à 6 chiffres par email (sans mot de passe) et Google OAuth |
 | Formulaires | react-hook-form + zod |
 | État panier | Zustand (persisté en `localStorage`, une clé par boutique) |
 | Déploiement | Vercel |
@@ -32,14 +32,17 @@ npm run lint         # ESLint
 npm run typecheck    # tsc --noEmit
 ```
 
-Variables d'environnement (`.env.local`, ne jamais commiter) :
+Variables d'environnement (`.env.local`, ne jamais commiter ; modèle : `.env.example`) :
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=      # serveur uniquement
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=            # serveur uniquement, ne jamais exposer au navigateur
+SUPABASE_JWKS_URL=              # optionnelle
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+`next.config.ts` expose au navigateur uniquement `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` (sous les noms `NEXT_PUBLIC_*`). Ne jamais lire ni demander le contenu de `.env.local`.
 
 ## 4. Architecture de l'application
 
