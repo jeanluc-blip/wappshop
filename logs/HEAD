@@ -1,0 +1,2 @@
+0000000000000000000000000000000000000000 cfee7a98bea57102996ea2b090d5e9c73243bcf4 WappShop <dev@wappshop.invalid> 1791415533 +0000	commit (initial): feat: phase 0 - initialisation Next.js, Tailwind, theme blanc, Logo, accueil provisoire
+cfee7a98bea57102996ea2b090d5e9c73243bcf4 b7bbb3a5d467806758be908ba19b35dceedb4ebc WappShop <dev@wappshop.invalid> 1791415533 +0000	commit: feat: phase 2 - connexion sans mot de passe (code email + Google), proxy /dashboard, assistant 3 etapes
