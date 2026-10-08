@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/Logo";
 export const metadata: Metadata = { title: "Politique de confidentialité" };
 
 // Remplacez cette adresse par votre email de contact.
-const CONTACT_EMAIL = "votre-adresse@gmail.com";
+const CONTACT_EMAIL = "jeanluckpekpede@gmail.com";
 const LAST_UPDATE = "8 octobre 2026";
 
 export default function PrivacyPage() {
