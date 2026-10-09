@@ -1,6 +1,6 @@
 /**
  * Mise en ligne en deux temps (PHASES.md) :
- * tant que la phase 5 n'est pas livrée, le panier est visible mais la commande WhatsApp reste fermée.
- * Passer à `true` à la phase 5.
+ * `false` = le panier est visible mais la commande WhatsApp reste fermée (accès anticipé vendeurs).
+ * `true`  = commande ouverte aux clients (phase 5 livrée).
  */
-export const CHECKOUT_ENABLED = false;
+export const CHECKOUT_ENABLED = true;

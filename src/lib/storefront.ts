@@ -1,13 +1,18 @@
 import "server-only";
 import { cache } from "react";
 import type { Badge, Category, Product, ShopPublic, Zone } from "@/lib/catalog";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
+
+/** Preuves de confiance : uniquement des données réelles (rien n'est inventé ni calculé à partir des visites). */
+export type Trust = { deliveredCount: number; ratingAverage: number | null; reviewCount: number };
 
 export type Storefront = {
   shop: ShopPublic;
   categories: Category[];
   products: Product[];
   zones: Zone[];
+  trust: Trust;
 };
 
 // Colonnes publiques uniquement : l'accès anonyme à `shops` est limité à cette liste (jamais user_id).
@@ -76,7 +81,10 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
     if (result.error) throw new Error(`Lecture du catalogue impossible : ${result.error.message}`);
   }
 
+  const trust = await getTrust(supabase, shop.id);
+
   return {
+    trust,
     shop: {
       id: shop.id,
       name: shop.shop_name,
@@ -120,3 +128,21 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
     zones: (zones.data ?? []).map((row) => ({ id: row.id as string, name: row.name as string, fee: Number(row.fee) })),
   };
 });
+
+/** Nombre de commandes livrées (compté côté serveur : les commandes ne sont jamais lisibles par le public) et avis réels. */
+async function getTrust(supabase: ReturnType<typeof createPublicClient>, shopId: string): Promise<Trust> {
+  const admin = createAdminClient();
+  const [delivered, reviews] = await Promise.all([
+    admin
+      ? admin.from("orders").select("id", { count: "exact", head: true }).eq("shop_id", shopId).eq("status", "delivered")
+      : Promise.resolve({ count: 0, error: null }),
+    supabase.from("reviews").select("rating").eq("shop_id", shopId).limit(5000),
+  ]);
+  const ratings = reviews.error ? [] : (reviews.data ?? []).map((row) => Number(row.rating));
+  const reviewCount = ratings.length;
+  return {
+    deliveredCount: delivered.error ? 0 : (delivered.count ?? 0),
+    reviewCount,
+    ratingAverage: reviewCount > 0 ? Math.round((ratings.reduce((sum, value) => sum + value, 0) / reviewCount) * 10) / 10 : null,
+  };
+}

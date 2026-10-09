@@ -3,7 +3,7 @@
 export const RESERVED_SLUGS = [
   "dashboard", "login", "register", "admin", "api", "app", "www",
   "auth", "avis", "produit", "static", "public", "support",
-  "icon", "logo", "favicon", "robots", "sitemap", "legal", "contact", "aide", "faq", "about", "wappshop",
+  "icon", "logo", "favicon", "robots", "sitemap", "legal", "contact", "aide", "faq", "about", "wappshop", "confidentialite", "conditions",
 ] as const;
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;

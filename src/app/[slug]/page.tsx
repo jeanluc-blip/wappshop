@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: shop.name,
       description,
       url: shopUrl(slug),
-      siteName: "WappShop",  "icon", "logo", "favicon", "robots", "sitemap", "legal", "contact", "aide", "faq", "about", "confidentialite", "conditions",
+      siteName: "WappShop",
       locale: "fr_FR",
       images: shop.logoUrl ? [{ url: shop.logoUrl }] : undefined,
     },
@@ -42,5 +42,5 @@ export default async function ShopPage({ params }: Props) {
   const data = await getStorefront(slug);
   if (!data) notFound();
 
-  return <Storefront shop={data.shop} categories={data.categories} products={data.products} zones={data.zones} qrSvg={await qrSvg(shopUrl(slug))} />;
+  return <Storefront shop={data.shop} categories={data.categories} products={data.products} zones={data.zones} trust={data.trust} qrSvg={await qrSvg(shopUrl(slug))} />;
 }

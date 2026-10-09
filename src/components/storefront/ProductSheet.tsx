@@ -1,27 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { PhotoGallery } from "@/components/storefront/PhotoGallery";
 import { PriceLabel } from "@/components/storefront/PriceLabel";
 import { ProductBadge } from "@/components/storefront/ProductBadge";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { groupVariants, unitPrice, type Product, type Selection } from "@/lib/catalog";
+import { copyText } from "@/lib/clipboard";
 import { formatPrice } from "@/lib/format";
 
 type ProductSheetBodyProps = {
   product: Product;
+  /** Adresse de la boutique : sert à construire le lien direct vers le produit. */
+  shopSlug: string;
   /** « detail » : fiche produit avec galerie ; « variants » : seulement le choix de variantes. */
   mode: "detail" | "variants";
   onAdd: (selection: Selection) => void;
 };
 
 /** Contenu de la fiche produit / du choix de variantes (remonté à chaque produit : le choix repart de zéro). */
-export function ProductSheetBody({ product, mode, onAdd }: ProductSheetBodyProps) {
+export function ProductSheetBody({ product, shopSlug, mode, onAdd }: ProductSheetBodyProps) {
   const [selection, setSelection] = useState<Selection>({});
   const groups = groupVariants(product.variants);
   const missing = groups.filter((group) => !selection[group.name]).map((group) => group.name);
   const price = unitPrice(product, selection);
+
+  async function copyProductLink() {
+    const link = `${window.location.origin}/${shopSlug}/${product.id}`;
+    if (await copyText(link)) {
+      toast.success("Lien du produit copié");
+    } else {
+      window.prompt("Copiez ce lien :", link);
+    }
+  }
 
   return (
     <div>
@@ -74,6 +87,11 @@ export function ProductSheetBody({ product, mode, onAdd }: ProductSheetBodyProps
           </Button>
           {missing.length > 0 && <p className="mt-2 text-center text-sm text-muted">Choisissez : {missing.join(", ")}</p>}
         </>
+      )}
+      {mode === "detail" && (
+        <Button type="button" variant="ghost" size="full" className="mt-2" onClick={copyProductLink}>
+          Copier le lien du produit
+        </Button>
       )}
     </div>
   );

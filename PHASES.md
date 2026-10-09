@@ -26,6 +26,11 @@ Ce document complète `CLAUDE.md` (qui décrit **quoi** construire). Ici : **dan
 
 Pour chaque phase suivante : « Réalise uniquement la **phase N** de `PHASES.md`. »
 
+## Avancement
+
+- Phases 0 à 4 : faites.
+- Phases 5, 6 et 7 : code livré (commande WhatsApp, onglet Commandes, statistiques, avis, SEO, pages d'erreur). Reste à faire par vous : `npm run lint`, `npm run typecheck`, la checklist à deux vendeurs et les tests sur téléphone (voir `MISE_EN_LIGNE.md`).
+
 ## Les phases
 
 **Phase 0 — Initialisation.** Projet Next.js (TypeScript strict), Tailwind, shadcn/ui, structure de dossiers de `CLAUDE.md`, composant `Logo` avec `logo.svg`, thème **fond blanc uniquement**, `.env.example`, page d'accueil provisoire.

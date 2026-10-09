@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ProductRow, type ProductItem } from "@/components/dashboard/ProductRow";
 import { Button } from "@/components/ui/button";
 import { requireShop } from "@/lib/shop";
+import { shopUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Catalogue" };
@@ -56,7 +57,7 @@ export default async function ProductsPage() {
       ) : (
         <ul aria-label="Vos produits">
           {items.map((item) => (
-            <ProductRow key={item.id} product={item} />
+            <ProductRow key={item.id} product={item} shopLink={shopUrl(shop.slug)} />
           ))}
         </ul>
       )}

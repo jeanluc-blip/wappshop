@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: { default: "WappShop", template: "%s · WappShop" },
   description:
     "Créez votre boutique en ligne et recevez vos commandes sur WhatsApp.",
+  applicationName: "WappShop",
+  openGraph: { type: "website", siteName: "WappShop", locale: "fr_FR" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

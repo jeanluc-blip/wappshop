@@ -14,7 +14,7 @@ const TABS = [
 ] as const;
 
 /** Navigation du bas (mobile d'abord) : zones tactiles de 56 px. */
-export function DashboardNav() {
+export function DashboardNav({ newOrders = 0 }: { newOrders?: number }) {
   const pathname = usePathname();
   return (
     <nav
@@ -34,7 +34,15 @@ export function DashboardNav() {
                   active ? "font-bold text-foreground shadow-[inset_0_-3px_0_var(--brand)]" : "text-muted",
                 )}
               >
-                <Icon size={20} aria-hidden="true" />
+                <span className="relative">
+                  <Icon size={20} aria-hidden="true" />
+                  {href === "/dashboard/orders" && newOrders > 0 && (
+                    <span className="absolute -right-3 -top-2 grid min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold leading-4 text-on-brand">
+                      <span aria-hidden="true">{newOrders > 99 ? "99+" : newOrders}</span>
+                      <span className="sr-only">{newOrders} nouvelle{newOrders > 1 ? "s" : ""} commande{newOrders > 1 ? "s" : ""}</span>
+                    </span>
+                  )}
+                </span>
                 {label}
               </Link>
             </li>

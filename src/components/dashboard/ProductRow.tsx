@@ -8,6 +8,7 @@ import { ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { copyText } from "@/lib/clipboard";
 import { formatPrice } from "@/lib/format";
 import { setProductSoldOut } from "@/app/(dashboard)/dashboard/products/actions";
 
@@ -23,7 +24,8 @@ export type ProductItem = {
   photoCount: number;
 };
 
-export function ProductRow({ product }: { product: ProductItem }) {
+/** `shopLink` : adresse publique de la boutique ; le lien du produit est `{shopLink}/{id du produit}`. */
+export function ProductRow({ product, shopLink }: { product: ProductItem; shopLink: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -41,6 +43,15 @@ export function ProductRow({ product }: { product: ProductItem }) {
       toast.error("Action impossible. Vérifiez votre connexion et réessayez.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyProductLink() {
+    const link = `${shopLink}/${product.id}`;
+    if (await copyText(link)) {
+      toast.success("Lien du produit copié");
+    } else {
+      window.prompt("Copiez ce lien :", link);
     }
   }
 
@@ -81,6 +92,9 @@ export function ProductRow({ product }: { product: ProductItem }) {
             {product.soldOut ? "Remettre en vente" : "Marquer épuisé"}
           </Button>
         </div>
+        <Button type="button" variant="ghost" size="sm" className="mt-1 w-full" onClick={copyProductLink}>
+          Copier le lien du produit
+        </Button>
       </Card>
     </li>
   );

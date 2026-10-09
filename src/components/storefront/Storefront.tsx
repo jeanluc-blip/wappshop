@@ -2,7 +2,7 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle, Search, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "zustand";
 import { Logo } from "@/components/brand/Logo";
@@ -26,10 +26,20 @@ import {
   type Zone,
 } from "@/lib/catalog";
 import { createCartStore } from "@/lib/cart";
+import type { Trust } from "@/lib/storefront";
 import { formatPrice } from "@/lib/format";
 import { questionMessage, waLink } from "@/lib/whatsapp";
 
-type StorefrontProps = { shop: ShopPublic; categories: Category[]; products: Product[]; zones: Zone[]; qrSvg: string };
+type StorefrontProps = {
+  shop: ShopPublic;
+  categories: Category[];
+  products: Product[];
+  zones: Zone[];
+  qrSvg: string;
+  trust: Trust;
+  /** Lien direct vers un produit : sa fiche s'ouvre dès l'arrivée sur la boutique. */
+  initialProductId?: string;
+};
 
 type SheetState =
   | null
@@ -38,10 +48,14 @@ type SheetState =
   | { type: "about" }
   | { type: "legal" };
 
-export function Storefront({ shop, categories, products, zones, qrSvg }: StorefrontProps) {
+export function Storefront({ shop, categories, products, zones, qrSvg, trust, initialProductId }: StorefrontProps) {
   const [store] = useState(() => createCartStore(shop.slug));
   const lines = useStore(store, (state) => state.lines);
-  const [sheet, setSheet] = useState<SheetState>(null);
+  const [sheet, setSheet] = useState<SheetState>(() =>
+    initialProductId && products.some((product) => product.id === initialProductId)
+      ? { type: "product", id: initialProductId, mode: "detail" }
+      : null,
+  );
   const [categoryId, setCategoryId] = useState("all");
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -146,7 +160,10 @@ export function Storefront({ shop, categories, products, zones, qrSvg }: Storefr
         ) : (
           <Logo size={44} />
         )}
-        <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{shop.name}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-lg font-bold">{shop.name}</h1>
+          <TrustLine trust={trust} />
+        </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setSheet({ type: "about" })}>
           À propos
         </Button>
@@ -228,6 +245,7 @@ export function Storefront({ shop, categories, products, zones, qrSvg }: Storefr
           <ProductSheetBody
             key={`${sheetProduct.id}:${sheet.mode}`}
             product={sheetProduct}
+            shopSlug={shop.slug}
             mode={sheet.mode}
             onAdd={(selection) => addWithSelection(sheetProduct, selection)}
           />
@@ -236,15 +254,17 @@ export function Storefront({ shop, categories, products, zones, qrSvg }: Storefr
 
       <Sheet open={sheet?.type === "cart"} onClose={closeSheet} title="Mon panier">
         <CartSheetBody
+          shop={shop}
+          zones={zones}
           lines={cartLines}
-          total={cartTotal}
-          shopName={shop.name}
-          whatsapp={shop.whatsapp}
+          subtotal={cartTotal}
           onSetQty={(key, qty) => store.getState().setQty(key, qty)}
           onClear={() => {
             store.getState().clear();
             setSheet(null);
           }}
+          onOrdered={() => store.getState().clear()}
+          onClose={closeSheet}
         />
       </Sheet>
 
@@ -256,5 +276,23 @@ export function Storefront({ shop, categories, products, zones, qrSvg }: Storefr
         <LegalSheetBody shop={shop} />
       </Sheet>
     </div>
+  );
+}
+
+/** Étoiles et nombre de commandes livrées : seulement s'il y a des données réelles. */
+function TrustLine({ trust }: { trust: Trust }) {
+  if (trust.reviewCount === 0 && trust.deliveredCount === 0) return null;
+  const parts: string[] = [];
+  if (trust.reviewCount > 0 && trust.ratingAverage !== null) {
+    parts.push(`${trust.ratingAverage.toLocaleString("fr-FR")} sur 5 (${trust.reviewCount} avis)`);
+  }
+  if (trust.deliveredCount > 0) {
+    parts.push(`${trust.deliveredCount} commande${trust.deliveredCount > 1 ? "s" : ""} livrée${trust.deliveredCount > 1 ? "s" : ""}`);
+  }
+  return (
+    <p className="flex items-center gap-1 truncate text-sm text-muted">
+      {trust.reviewCount > 0 && <Star size={14} aria-hidden="true" className="shrink-0 fill-[#f59e0b] text-[#f59e0b]" />}
+      <span className="truncate">{parts.join(" · ")}</span>
+    </p>
   );
 }
