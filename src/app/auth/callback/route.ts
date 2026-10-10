@@ -18,5 +18,5 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL(safeNext(searchParams.get("next")), request.url));
     }
   }
-  return NextResponse.redirect(new URL("/login?error=google", request.url));
+  return NextResponse.redirect(new URL("/login?error=1", request.url));
 }

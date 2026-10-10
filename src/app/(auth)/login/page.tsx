@@ -11,7 +11,7 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   const initialError = error
-    ? "La connexion avec Google n'a pas abouti. Réessayez ou utilisez votre email."
+    ? "La connexion n'a pas abouti. Réessayez avec votre email."
     : null;
 
   return (

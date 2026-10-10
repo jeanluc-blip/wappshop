@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { emailSchema, otpSchema } from "@/lib/validators";
@@ -118,22 +118,4 @@ export async function verifyOtp(emailInput: string, codeInput: string): Promise<
 
   (await cookies()).delete(OTP_COOKIE);
   redirect("/dashboard");
-}
-
-/** Connexion Google : redirige vers Google, puis vers /auth/callback. */
-export async function signInWithGoogle() {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
-  const origin = host
-    ? `${proto}://${host}`
-    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${origin}/auth/callback` },
-  });
-  if (error || !data.url) redirect("/login?error=google");
-  redirect(data.url);
 }

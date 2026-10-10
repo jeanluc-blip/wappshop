@@ -15,7 +15,7 @@
 | Framework | Next.js 14+ (App Router) + TypeScript strict |
 | UI | Tailwind CSS + composants shadcn/ui (minimalistes) + icônes lucide-react |
 | Backend / BDD | Supabase (PostgreSQL, Auth, Storage, Row Level Security) |
-| Auth | Supabase Auth : code à 6 chiffres par email (sans mot de passe) et Google OAuth |
+| Auth | Supabase Auth : code à 6 chiffres par email (sans mot de passe) ; la connexion Google a été retirée |
 | Formulaires | react-hook-form + zod |
 | État panier | Zustand (persisté en `localStorage`, une clé par boutique) |
 | Déploiement | Vercel |
