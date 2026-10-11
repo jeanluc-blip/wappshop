@@ -1,17 +1,23 @@
+/** Adresse publique par défaut : jamais « localhost » dans un lien destiné aux clients. */
+const DEFAULT_PUBLIC_URL = "https://wappshop.vercel.app";
+
+const clean = (value: string) => value.replace(/\/+$/, "");
+const isLocal = (value: string) => /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(value);
+
 /**
  * Adresse publique de l'application, sans « / » final.
- * Priorité : NEXT_PUBLIC_APP_URL si elle est renseignée avec une vraie adresse. Si elle est absente, ou si elle vaut encore
- * « localhost » alors que le site tourne sur Vercel, on utilise l'adresse de production fournie automatiquement par Vercel :
- * ainsi le lien de la boutique, le QR code et les liens de partage ne pointent jamais vers une adresse inaccessible aux clients.
+ * Ordre : NEXT_PUBLIC_APP_URL (si ce n'est pas une adresse locale), puis l'adresse de production fournie
+ * automatiquement par Vercel, puis l'adresse publique par défaut ci-dessus.
+ * Ainsi un lien copié et envoyé à un client commence toujours par l'adresse publique, même depuis localhost.
  */
 export function getAppUrl(): string {
-  const configured = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/+$/, "");
-  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
-  if (configured && !(isLocal && process.env.VERCEL)) return configured;
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit && !isLocal(explicit)) return clean(explicit);
 
-  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
-  if (vercelHost) return `https://${vercelHost.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
-  return configured || "http://localhost:3000";
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, "")}`.replace(/\/+$/, "");
+
+  return DEFAULT_PUBLIC_URL;
 }
 
 /** Lien complet d'une boutique : https://wappshop.app/{slug}. */
