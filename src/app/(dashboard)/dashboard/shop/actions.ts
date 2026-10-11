@@ -7,6 +7,7 @@ import { ownedObjectPath } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import {
   aboutSettingsSchema,
+  bannerTitleSchema,
   DEMO_WHATSAPP,
   deliverySettingsSchema,
   normalizeWhatsapp,
@@ -176,6 +177,40 @@ export async function updateAboutSettings(input: unknown): Promise<ActionResult>
   if (error) {
     console.error("updateAboutSettings", error);
     return fail(GENERIC_ERROR);
+  }
+
+  refresh(ctx.shop.slug);
+  return { ok: true };
+}
+
+/** Bannière de la boutique : titre et image (elle s'affiche dès que l'un des deux est défini). */
+export async function updateBanner(titleInput: string, image: LogoChange): Promise<ActionResult> {
+  const ctx = await getShopContext();
+  if (!ctx) return fail(SESSION_ERROR);
+
+  const title = bannerTitleSchema.safeParse(titleInput);
+  if (!title.success) return fail(title.error.issues[0].message);
+
+  const update: Record<string, unknown> = { banner_title: title.data || null };
+  let newUrl: string | null | undefined;
+  if (image.action === "set") {
+    if (!ownedObjectPath(image.url, "product-images", ctx.user.id)) return fail("Image invalide : réessayez de l'importer.");
+    newUrl = image.url;
+  } else if (image.action === "remove") {
+    newUrl = null;
+  }
+  if (newUrl !== undefined) update.banner_url = newUrl;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("shops").update(update).eq("id", ctx.shop.id);
+  if (error) {
+    console.error("updateBanner", error);
+    return fail(GENERIC_ERROR);
+  }
+
+  if (newUrl !== undefined && ctx.shop.banner_url && ctx.shop.banner_url !== newUrl) {
+    const oldPath = ownedObjectPath(ctx.shop.banner_url, "product-images", ctx.user.id);
+    if (oldPath) await supabase.storage.from("product-images").remove([oldPath]);
   }
 
   refresh(ctx.shop.slug);

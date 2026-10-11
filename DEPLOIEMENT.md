@@ -1,9 +1,9 @@
 # Mise en ligne de WappShop
 
 ## 1. Base de données (Supabase)
-1. SQL Editor : lancer `supabase/schema.sql` (nouvelle base) **ou**, sur une base existante, les fichiers `supabase/phase3.sql` puis `supabase/phase5.sql`.
+1. SQL Editor : lancer `supabase/schema.sql` (nouvelle base) **ou**, sur une base existante, les fichiers `supabase/phase3.sql`, `supabase/phase5.sql` puis `supabase/phase8-vitrine.sql`.
 2. Authentication > URL Configuration : mettre l'adresse du site en « Site URL » et ajouter `https://VOTRE-DOMAINE/auth/callback` dans « Redirect URLs » (garder `http://localhost:3000/auth/callback` pour les tests).
-3. Connexion : par email avec un code à 6 chiffres uniquement (pas de connexion Google).
+3. Connexion : première connexion par email avec un code à 6 chiffres, puis le vendeur crée son code secret (8 caractères minimum) pour les connexions suivantes. Pas de connexion Google.
 4. Authentication > Emails : expiration du code à 10 minutes ; en production, brancher un SMTP personnalisé (domaine avec SPF/DKIM) pour éviter le spam.
 5. Sauvegardes : le plan gratuit n'en fait pas. Prendre un plan avec sauvegardes quotidiennes (Pro) avant d'ouvrir aux clients, ou exporter régulièrement avec `pg_dump` (Project Settings > Database > Connection string).
 6. Vérifier que le projet ne se met pas en pause (plan gratuit : pause après une semaine d'inactivité) et que le plan autorise un usage commercial.

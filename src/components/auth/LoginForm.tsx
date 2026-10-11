@@ -4,15 +4,16 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { SecretField } from "@/components/auth/SecretField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendOtp, verifyOtp } from "@/app/(auth)/login/actions";
+import { sendOtp, signInWithCode, verifyOtp } from "@/app/(auth)/login/actions";
 import { emailSchema, OTP_LENGTH } from "@/lib/validators";
 
 type EmailValues = { email: string };
 
-export function LoginForm({ initialError }: { initialError?: string | null }) {
+function EmailCodeFlow({ initialError, onBack }: { initialError?: string | null; onBack: () => void }) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -75,7 +76,7 @@ export function LoginForm({ initialError }: { initialError?: string | null }) {
     return (
       <div className="mt-2">
         <p className="mb-5 text-center text-muted">
-          Créez votre boutique ou connectez-vous. Aucun mot de passe à retenir.
+          Première connexion ou code secret oublié ? Recevez un code par email, puis créez votre code secret.
         </p>
         {errorBox}
         <form onSubmit={handleSubmit((values) => requestCode(values.email))} noValidate>
@@ -95,6 +96,11 @@ export function LoginForm({ initialError }: { initialError?: string | null }) {
             {pending ? "Envoi du code…" : "Recevoir mon code"}
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm">
+          <button type="button" onClick={onBack} className="min-h-11 cursor-pointer underline">
+            J&apos;ai déjà un code secret
+          </button>
+        </p>
       </div>
     );
   }
@@ -147,6 +153,71 @@ export function LoginForm({ initialError }: { initialError?: string | null }) {
           Changer d&apos;email
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Connexion habituelle (email + code secret) ; le code reçu par email sert à la première connexion ou en cas d'oubli. */
+export function LoginForm({ initialError }: { initialError?: string | null }) {
+  const [mode, setMode] = useState<"secret" | "email">("secret");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(initialError ?? null);
+  const [pending, startTransition] = useTransition();
+
+  if (mode === "email") return <EmailCodeFlow initialError={error} onBack={() => { setError(null); setMode("secret"); }} />;
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      // En cas de succès, l'action redirige vers le tableau de bord : on ne revient ici qu'en cas d'erreur.
+      const result = await signInWithCode(email, code);
+      if (result && !result.ok) {
+        setError(result.message);
+        setCode("");
+      }
+    });
+  }
+
+  return (
+    <div className="mt-2">
+      <p className="mb-5 text-center text-muted">Connectez-vous avec votre email et votre code secret.</p>
+      {error && (
+        <p role="alert" className="mb-3 rounded-xl border border-border bg-surface p-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <form onSubmit={submit} noValidate>
+        <Label htmlFor="login-email">Email</Label>
+        <Input
+          id="login-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="vous@exemple.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="mb-3"
+        />
+        <Label htmlFor="login-code">Code secret</Label>
+        <SecretField id="login-code" value={code} onChange={setCode} autoComplete="current-password" />
+        <Button type="submit" size="full" className="mt-4" disabled={pending || !email.trim() || !code}>
+          {pending ? "Connexion…" : "Se connecter"}
+        </Button>
+      </form>
+      <p className="mt-4 text-center text-sm">
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            setMode("email");
+          }}
+          className="min-h-11 cursor-pointer underline"
+        >
+          Première connexion ou code oublié ?
+        </button>
+      </p>
     </div>
   );
 }

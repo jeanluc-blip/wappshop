@@ -20,10 +20,12 @@ export type MyShop = {
   opening_hours: string | null;
   social_url: string | null;
   announcement: string | null;
+  banner_url: string | null;
+  banner_title: string | null;
 };
 
 const SHOP_COLUMNS =
-  "id, user_id, shop_name, slug, logo_url, whatsapp_number, delivery_enabled, pickup_enabled, pickup_address, payment_methods, payment_note, about, opening_hours, social_url, announcement";
+  "id, user_id, shop_name, slug, logo_url, whatsapp_number, delivery_enabled, pickup_enabled, pickup_address, payment_methods, payment_note, about, opening_hours, social_url, announcement, banner_url, banner_title";
 
 /** Boutique du vendeur connecté (RLS : uniquement la sienne), ou null s'il n'en a pas encore. */
 export const getMyShop = cache(async (): Promise<MyShop | null> => {

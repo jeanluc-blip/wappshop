@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/brand/Logo";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Button } from "@/components/ui/button";
@@ -7,11 +9,13 @@ import { getMyShop } from "@/lib/shop";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await requireUser(); // en plus du proxy : la page ne s'affiche jamais sans session valide
-  const shop = await getMyShop(); // pas de navigation tant que l'assistant de démarrage n'est pas terminé
+// L'espace vendeur n'est jamais indexé par les moteurs de recherche.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-  // Pastille « Commandes » : nombre de commandes encore au statut « Nouvelle » (RLS : uniquement les siennes).
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const user = await requireUser(); // en plus du proxy : la page ne s'affiche jamais sans session valide
+  if (!user.hasCode) redirect("/login/code"); // le vendeur doit d'abord créer son code secret
+  const shop = await getMyShop(); // pas de navigation tant que l'assistant de démarrage n'est pas terminé
   let newOrders = 0;
   if (shop) {
     const supabase = await createClient();

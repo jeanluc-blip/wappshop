@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { slugError } from "@/lib/slug";
 
+// Messages d'erreur par défaut de zod en français (nos messages personnalisés restent prioritaires).
+z.config(z.locales.fr());
+
 export const OTP_LENGTH = 6;
 
 export const emailSchema = z.object({
@@ -108,6 +111,7 @@ export const productFormSchema = z
     badge: z.enum(["none", "new", "promo"]),
     oldPrice: optionalPriceField("Ancien prix"),
     soldOut: z.boolean(),
+    featured: z.boolean(),
     description: z.string().trim().max(2000, "2 000 caractères maximum"),
     categoryId: z.string(),
     variants: z.array(variantRowSchema).max(MAX_VARIANTS, `${MAX_VARIANTS} variantes maximum`),
@@ -167,3 +171,62 @@ export const aboutSettingsSchema = z.object({
     .refine((value) => value === "" || isHttpsUrl(value), "Le lien doit commencer par https://"),
 });
 export type AboutSettingsValues = z.input<typeof aboutSettingsSchema>;
+
+// ---------------------------------------------------------------------------
+// Phase 5 : commande. Le navigateur n'envoie QUE des identifiants et des choix ;
+// prix, suppléments, frais et total sont recalculés par le serveur (les champs en trop sont ignorés).
+// ---------------------------------------------------------------------------
+export const orderInputSchema = z.object({
+  slug: z.string().min(3).max(40),
+  customerName: z
+    .string()
+    .trim()
+    .min(2, "Saisissez votre nom")
+    .max(80, "80 caractères maximum"),
+  fulfillment: z.enum(["delivery", "pickup"]),
+  zoneId: z.guid().optional().nullable(),
+  address: z.string().trim().max(200, "200 caractères maximum").optional().nullable(),
+  paymentMethod: z.string().trim().max(80).optional().nullable(),
+  items: z
+    .array(
+      z.object({
+        productId: z.guid(),
+        selection: z.record(z.string().max(40), z.string().max(40)),
+        qty: z.number().int().min(1).max(99),
+      }),
+    )
+    .min(1, "Votre panier est vide")
+    .max(50, "Trop d'articles dans le panier"),
+});
+export type OrderInput = z.input<typeof orderInputSchema>;
+
+export const reviewInputSchema = z.object({
+  token: z.guid(),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(300, "300 caractères maximum").optional().nullable(),
+});
+
+// ---------------------------------------------------------------------------
+// Code secret du vendeur (créé après le premier code reçu par email)
+// ---------------------------------------------------------------------------
+export const SECRET_CODE_MIN = 8;
+const WEAK_CODES = ["12345678", "123456789", "1234567890", "11111111", "00000000", "password", "motdepasse", "azertyui", "azerty123"];
+
+export const secretCodeSchema = z
+  .object({
+    code: z
+      .string()
+      .min(SECRET_CODE_MIN, `Au moins ${SECRET_CODE_MIN} caractères`)
+      .max(72, "72 caractères maximum")
+      .refine((value) => !WEAK_CODES.includes(value.toLowerCase()) && new Set(value).size > 2, "Ce code est trop simple : choisissez-en un autre."),
+    confirm: z.string(),
+  })
+  .refine((data) => data.code === data.confirm, { path: ["confirm"], message: "Les deux codes ne sont pas identiques." });
+
+export const signInCodeSchema = z.object({
+  email: emailSchema.shape.email,
+  code: z.string().min(1, "Saisissez votre code secret").max(72),
+});
+
+/** Titre de la bannière de la boutique (la bannière s'affiche dès qu'un titre ou une image est défini). */
+export const bannerTitleSchema = z.string().trim().max(80, "80 caractères maximum");

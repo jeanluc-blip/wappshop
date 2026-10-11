@@ -1,9 +1,10 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRateLimited } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
-import { emailSchema, otpSchema } from "@/lib/validators";
+import { emailSchema, otpSchema, secretCodeSchema, signInCodeSchema } from "@/lib/validators";
 
 const OTP_COOKIE = "ws_otp";
 const MAX_TRIES = 5;
@@ -117,5 +118,55 @@ export async function verifyOtp(emailInput: string, codeInput: string): Promise<
   }
 
   (await cookies()).delete(OTP_COOKIE);
+  // Après un code reçu par email (première connexion ou code oublié), le vendeur crée son code secret.
+  redirect("/login/code");
+}
+
+async function callerIp(): Promise<string> {
+  return (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}
+
+/** Connexion habituelle : email + code secret. Le message d'erreur ne dit jamais lequel des deux est faux. */
+export async function signInWithCode(emailInput: string, codeInput: string): Promise<ActionResult> {
+  const parsed = signInCodeSchema.safeParse({ email: emailInput, code: codeInput });
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Informations invalides." };
+  const { email, code } = parsed.data;
+
+  if (isRateLimited(`signin-ip:${await callerIp()}`, 10) || isRateLimited(`signin-email:${email}`, 8, 10 * 60_000)) {
+    return { ok: false, message: "Trop de tentatives. Patientez quelques minutes ou recevez un code par email." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password: code });
+  if (error) {
+    return { ok: false, message: "Email ou code secret incorrect. Si vous l'avez oublié, recevez un code par email." };
+  }
+  redirect("/dashboard");
+}
+
+/** Crée (ou remplace) le code secret du vendeur connecté. */
+export async function createCode(codeInput: string, confirmInput: string): Promise<ActionResult> {
+  const parsed = secretCodeSchema.safeParse({ code: codeInput, confirm: confirmInput });
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Code invalide." };
+
+  const supabase = await createClient();
+  const { data: current } = await supabase.auth.getUser();
+  if (!current.user) return { ok: false, message: "Votre session a expiré. Reconnectez-vous avec votre email." };
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.code, data: { has_code: true } });
+  if (error) {
+    if (error.code === "same_password") {
+      // Même code qu'avant : on marque simplement le code comme créé.
+      const { error: flagError } = await supabase.auth.updateUser({ data: { has_code: true } });
+      if (flagError) return { ok: false, message: "Impossible d'enregistrer le code. Réessayez." };
+    } else if (error.code === "weak_password") {
+      return { ok: false, message: "Ce code est trop faible : ajoutez des lettres et des chiffres." };
+    } else {
+      return { ok: false, message: "Impossible d'enregistrer le code. Réessayez." };
+    }
+  }
+
+  // Nouveau jeton de session : il contient maintenant « has_code », sinon le tableau de bord le redemanderait.
+  await supabase.auth.refreshSession();
   redirect("/dashboard");
 }

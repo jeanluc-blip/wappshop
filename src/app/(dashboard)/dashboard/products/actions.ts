@@ -68,6 +68,7 @@ export async function saveProduct(input: SaveProductInput): Promise<ActionResult
     badge: values.badge,
     old_price: isPromo ? parsePrice(values.oldPrice) : null,
     sold_out: values.soldOut,
+    featured: values.featured,
     description: values.description || null,
   };
 

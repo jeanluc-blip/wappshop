@@ -19,12 +19,12 @@ export type ProductItem = {
   oldPrice: number | null;
   badge: "none" | "new" | "promo";
   soldOut: boolean;
+  featured: boolean;
   categoryName: string | null;
   imageUrl: string | null;
   photoCount: number;
 };
 
-/** `shopLink` : adresse publique de la boutique ; le lien du produit est `{shopLink}/{id du produit}`. */
 export function ProductRow({ product, shopLink }: { product: ProductItem; shopLink: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -43,15 +43,6 @@ export function ProductRow({ product, shopLink }: { product: ProductItem; shopLi
       toast.error("Action impossible. Vérifiez votre connexion et réessayez.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function copyProductLink() {
-    const link = `${shopLink}/${product.id}`;
-    if (await copyText(link)) {
-      toast.success("Lien du produit copié");
-    } else {
-      window.prompt("Copiez ce lien :", link);
     }
   }
 
@@ -80,21 +71,32 @@ export function ProductRow({ product, shopLink }: { product: ProductItem; shopLi
             <div className="mt-1 flex flex-wrap gap-1.5">
               {product.badge === "new" && <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold">Nouveau</span>}
               {product.badge === "promo" && <span className="rounded-full bg-[#fee2e2] px-2 py-0.5 text-xs font-semibold text-[#991b1b]">Promo</span>}
+              {product.featured && <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-xs font-semibold text-[#166534]">Populaire</span>}
               {product.soldOut && <span className="rounded-full bg-border px-2 py-0.5 text-xs font-semibold">Épuisé</span>}
             </div>
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="flex-1">
             <Link href={`/dashboard/products/${product.id}`}>Modifier</Link>
           </Button>
           <Button type="button" variant="outline" size="sm" className="flex-1" disabled={busy} onClick={toggleSoldOut}>
             {product.soldOut ? "Remettre en vente" : "Marquer épuisé"}
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={async () => {
+              const link = `${shopLink}/${product.id}`;
+              if (await copyText(link)) toast.success("Lien du produit copié");
+              else window.prompt("Copiez ce lien :", link);
+            }}
+          >
+            Copier le lien du produit
+          </Button>
         </div>
-        <Button type="button" variant="ghost" size="sm" className="mt-1 w-full" onClick={copyProductLink}>
-          Copier le lien du produit
-        </Button>
       </Card>
     </li>
   );

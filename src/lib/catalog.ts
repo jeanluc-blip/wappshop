@@ -11,6 +11,8 @@ export type Product = {
   oldPrice: number | null;
   badge: Badge;
   soldOut: boolean;
+  /** Produit populaire : mis en avant en haut de la boutique (choix du vendeur). */
+  featured: boolean;
   description: string | null;
   categoryId: string | null;
   images: string[];
@@ -18,6 +20,8 @@ export type Product = {
 };
 
 export type Category = { id: string; name: string; imageUrl: string | null };
+
+export type Review = { rating: number; comment: string | null; createdAt: string };
 
 export type Zone = { id: string; name: string; fee: number };
 
@@ -36,6 +40,8 @@ export type ShopPublic = {
   openingHours: string | null;
   socialUrl: string | null;
   announcement: string | null;
+  bannerUrl: string | null;
+  bannerTitle: string | null;
 };
 
 export type VariantGroup = { name: string; options: { value: string; supplement: number }[] };

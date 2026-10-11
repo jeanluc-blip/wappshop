@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AboutForm } from "@/components/dashboard/AboutForm";
+import { BannerForm } from "@/components/dashboard/BannerForm";
 import { DeliveryForm } from "@/components/dashboard/DeliveryForm";
 import { ShopInfoForm } from "@/components/dashboard/ShopInfoForm";
 import { requireShop } from "@/lib/shop";
@@ -44,6 +45,11 @@ export default async function ShopSettingsPage() {
         userId={user.id}
         host={host}
         initial={{ shopName: shop.shop_name, slug: shop.slug, whatsapp: shop.whatsapp_number, logoUrl: shop.logo_url }}
+      />
+      <BannerForm
+        key={`${shop.banner_title}|${shop.banner_url}`}
+        userId={user.id}
+        initial={{ title: shop.banner_title ?? "", imageUrl: shop.banner_url }}
       />
       <DeliveryForm
         key={deliveryKey}

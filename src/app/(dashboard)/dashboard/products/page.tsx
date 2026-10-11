@@ -15,6 +15,7 @@ type Row = {
   old_price: number | null;
   badge: "none" | "new" | "promo";
   sold_out: boolean;
+  featured: boolean;
   categories: { category_name: string } | null;
   images: { image_url: string; position: number }[];
 };
@@ -24,7 +25,7 @@ export default async function ProductsPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("products")
-    .select("id, name, price, old_price, badge, sold_out, categories(category_name), images(image_url, position)")
+    .select("id, name, price, old_price, badge, sold_out, featured, categories(category_name), images(image_url, position)")
     .eq("shop_id", shop.id)
     .order("created_at", { ascending: false })
     .returns<Row[]>();
@@ -38,6 +39,7 @@ export default async function ProductsPage() {
       oldPrice: row.old_price === null ? null : Number(row.old_price),
       badge: row.badge,
       soldOut: row.sold_out,
+      featured: row.featured,
       categoryName: row.categories?.category_name ?? null,
       imageUrl: first?.image_url ?? null,
       photoCount: row.images.length,

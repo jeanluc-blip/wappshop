@@ -1,23 +1,21 @@
 import "server-only";
 import { cache } from "react";
-import type { Badge, Category, Product, ShopPublic, Zone } from "@/lib/catalog";
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { Badge, Category, Product, Review, ShopPublic, Zone } from "@/lib/catalog";
 import { createPublicClient } from "@/lib/supabase/public";
-
-/** Preuves de confiance : uniquement des données réelles (rien n'est inventé ni calculé à partir des visites). */
-export type Trust = { deliveredCount: number; ratingAverage: number | null; reviewCount: number };
 
 export type Storefront = {
   shop: ShopPublic;
   categories: Category[];
   products: Product[];
   zones: Zone[];
-  trust: Trust;
+  /** Avis réels des clients (jamais calculés à partir des statistiques). */
+  reviews: Review[];
+  deliveredCount: number;
 };
 
 // Colonnes publiques uniquement : l'accès anonyme à `shops` est limité à cette liste (jamais user_id).
 const SHOP_COLUMNS =
-  "id, shop_name, slug, logo_url, whatsapp_number, delivery_enabled, pickup_enabled, pickup_address, payment_methods, payment_note, about, opening_hours, social_url, announcement";
+  "id, shop_name, slug, logo_url, whatsapp_number, delivery_enabled, pickup_enabled, pickup_address, payment_methods, payment_note, about, opening_hours, social_url, announcement, banner_url, banner_title";
 
 type ShopRow = {
   id: string;
@@ -34,6 +32,8 @@ type ShopRow = {
   opening_hours: string | null;
   social_url: string | null;
   announcement: string | null;
+  banner_url: string | null;
+  banner_title: string | null;
 };
 
 type ProductRow = {
@@ -43,6 +43,7 @@ type ProductRow = {
   old_price: number | null;
   badge: Badge;
   sold_out: boolean;
+  featured: boolean;
   description: string | null;
   category_id: string | null;
   images: { image_url: string; position: number }[];
@@ -64,27 +65,31 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
   if (shopError) throw new Error(`Lecture de la boutique impossible : ${shopError.message}`);
   if (!shop) return null;
 
-  const [categories, products, zones] = await Promise.all([
+  const [categories, products, zones, reviews, delivered] = await Promise.all([
     supabase.from("categories").select("id, category_name, image_url").eq("shop_id", shop.id).order("created_at"),
     supabase
       .from("products")
       .select(
-        "id, name, price, old_price, badge, sold_out, description, category_id, images(image_url, position), variants(id, variant_name, variant_value, price_supplement, position)",
+        "id, name, price, old_price, badge, sold_out, featured, description, category_id, images(image_url, position), variants(id, variant_name, variant_value, price_supplement, position)",
       )
       .eq("shop_id", shop.id)
       .order("created_at", { ascending: false })
       .limit(500)
       .returns<ProductRow[]>(),
     supabase.from("delivery_zones").select("id, name, fee, position").eq("shop_id", shop.id).order("position").order("name"),
+    supabase
+      .from("reviews")
+      .select("rating, comment, created_at")
+      .eq("shop_id", shop.id)
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase.rpc("delivered_count", { p_shop: shop.id }),
   ]);
-  for (const result of [categories, products, zones]) {
+  for (const result of [categories, products, zones, reviews]) {
     if (result.error) throw new Error(`Lecture du catalogue impossible : ${result.error.message}`);
   }
 
-  const trust = await getTrust(supabase, shop.id);
-
   return {
-    trust,
     shop: {
       id: shop.id,
       name: shop.shop_name,
@@ -100,6 +105,8 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
       openingHours: shop.opening_hours,
       socialUrl: shop.social_url,
       announcement: shop.announcement,
+      bannerUrl: shop.banner_url,
+      bannerTitle: shop.banner_title,
     },
     categories: (categories.data ?? []).map((row) => ({
       id: row.id as string,
@@ -113,6 +120,7 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
       oldPrice: row.old_price === null ? null : Number(row.old_price),
       badge: row.badge,
       soldOut: row.sold_out,
+      featured: row.featured,
       description: row.description,
       categoryId: row.category_id,
       images: [...row.images].sort((a, b) => a.position - b.position).map((image) => image.image_url),
@@ -125,24 +133,13 @@ export const getStorefront = cache(async (slug: string): Promise<Storefront | nu
           supplement: Number(variant.price_supplement),
         })),
     })),
+    reviews: (reviews.data ?? []).map((row) => ({
+      rating: Number(row.rating),
+      comment: (row.comment as string | null) ?? null,
+      createdAt: row.created_at as string,
+    })),
+    // Fonction SQL de phase5.sql ; si elle manque encore, on n'affiche simplement pas ce chiffre.
+    deliveredCount: delivered.error ? 0 : Number(delivered.data ?? 0),
     zones: (zones.data ?? []).map((row) => ({ id: row.id as string, name: row.name as string, fee: Number(row.fee) })),
   };
 });
-
-/** Nombre de commandes livrées (compté côté serveur : les commandes ne sont jamais lisibles par le public) et avis réels. */
-async function getTrust(supabase: ReturnType<typeof createPublicClient>, shopId: string): Promise<Trust> {
-  const admin = createAdminClient();
-  const [delivered, reviews] = await Promise.all([
-    admin
-      ? admin.from("orders").select("id", { count: "exact", head: true }).eq("shop_id", shopId).eq("status", "delivered")
-      : Promise.resolve({ count: 0, error: null }),
-    supabase.from("reviews").select("rating").eq("shop_id", shopId).limit(5000),
-  ]);
-  const ratings = reviews.error ? [] : (reviews.data ?? []).map((row) => Number(row.rating));
-  const reviewCount = ratings.length;
-  return {
-    deliveredCount: delivered.error ? 0 : (delivered.count ?? 0),
-    reviewCount,
-    ratingAverage: reviewCount > 0 ? Math.round((ratings.reduce((sum, value) => sum + value, 0) / reviewCount) * 10) / 10 : null,
-  };
-}

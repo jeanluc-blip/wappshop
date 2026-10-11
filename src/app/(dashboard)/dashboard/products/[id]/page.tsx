@@ -14,6 +14,7 @@ type Row = {
   old_price: number | null;
   badge: "none" | "new" | "promo";
   sold_out: boolean;
+  featured: boolean;
   description: string | null;
   category_id: string | null;
   images: { image_url: string; position: number }[];
@@ -32,7 +33,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     supabase
       .from("products")
       .select(
-        "id, name, price, old_price, badge, sold_out, description, category_id, images(image_url, position), variants(variant_name, variant_value, price_supplement, position)",
+        "id, name, price, old_price, badge, sold_out, featured, description, category_id, images(image_url, position), variants(variant_name, variant_value, price_supplement, position)",
       )
       .eq("id", id)
       .eq("shop_id", shop.id)
@@ -58,6 +59,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             badge: row.badge,
             oldPrice: row.old_price === null ? "" : String(row.old_price),
             soldOut: row.sold_out,
+            featured: row.featured,
             description: row.description ?? "",
             categoryId: row.category_id ?? "",
             variants: [...row.variants]

@@ -34,6 +34,7 @@ const EMPTY_VALUES: ProductFormValues = {
   badge: "none",
   oldPrice: "",
   soldOut: false,
+  featured: false,
   description: "",
   categoryId: "",
   variants: [],
@@ -193,6 +194,14 @@ export function ProductForm({ userId, categories, product }: ProductFormProps) {
         )}
 
         <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px]">
+          <input type="checkbox" className="h-5 w-5 accent-[#25d366]" {...form.register("featured")} />
+          <span>
+            Produit populaire
+            <span className="block text-sm text-muted">Affiché en haut de votre boutique, dans « Produits populaires ».</span>
+          </span>
+        </label>
+
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[15px]">
           <input type="checkbox" className="h-5 w-5 accent-[#25d366]" {...form.register("soldOut")} />
           <span>
             Produit épuisé

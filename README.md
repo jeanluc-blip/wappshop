@@ -20,7 +20,7 @@ npm run lint && npm run typecheck && npm run build
 
 ## Phases 3 à 7
 
-- Supabase > SQL Editor : base neuve = `supabase/schema.sql` ; base existante = `supabase/phase3.sql` puis `supabase/phase5.sql`.
+- Supabase > SQL Editor : base neuve = `supabase/schema.sql` ; base existante = `supabase/phase3.sql`, `supabase/phase5.sql` puis `supabase/phase8-vitrine.sql`.
 - `.env.local` : `SUPABASE_SECRET_KEY` est obligatoire (visites, commandes, avis).
 - `src/lib/features.ts` : `CHECKOUT_ENABLED` (commande WhatsApp) ; mettre `false` pour revenir à « accès anticipé ».
 - Mise en ligne : voir `DEPLOIEMENT.md`.

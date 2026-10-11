@@ -133,6 +133,20 @@ create table if not exists public.reviews (
 alter table public.variants add column if not exists position integer not null default 0;
 alter table public.delivery_zones add column if not exists position integer not null default 0;
 
+-- Phases 5 et 6 : nombre de commandes livrées (nombre seulement)
+create or replace function public.delivered_count(p_shop uuid) returns integer
+language sql stable security definer set search_path = public as $$
+  select count(*)::int from public.orders where shop_id = p_shop and status = 'delivered'
+$$;
+revoke all on function public.delivered_count(uuid) from public;
+grant execute on function public.delivered_count(uuid) to anon, authenticated;
+
+-- Phase 8 : bannière de la boutique et produits populaires
+alter table public.shops add column if not exists banner_url text;
+alter table public.shops add column if not exists banner_title text
+  check (banner_title is null or char_length(banner_title) <= 80);
+alter table public.products add column if not exists featured boolean not null default false;
+
 -- 3. Index ------------------------------------------------------------
 create index if not exists idx_categories_shop on public.categories(shop_id);
 create index if not exists idx_products_shop on public.products(shop_id);
@@ -208,7 +222,7 @@ grant select on public.categories, public.products, public.images,
   public.variants, public.delivery_zones, public.reviews to anon;
 grant select (id, shop_name, slug, logo_url, whatsapp_number, delivery_enabled, pickup_enabled,
   pickup_address, payment_methods, payment_note, about, opening_hours, social_url,
-  announcement, created_at) on public.shops to anon;
+  announcement, banner_url, banner_title, created_at) on public.shops to anon;
 
 -- Vendeurs connectés
 grant select, insert, update, delete on public.shops, public.categories, public.products,
