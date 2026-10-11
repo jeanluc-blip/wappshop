@@ -1,7 +1,17 @@
-/** Adresse publique de l'application (NEXT_PUBLIC_APP_URL), sans « / » final. */
+/**
+ * Adresse publique de l'application, sans « / » final.
+ * Priorité : NEXT_PUBLIC_APP_URL si elle est renseignée avec une vraie adresse. Si elle est absente, ou si elle vaut encore
+ * « localhost » alors que le site tourne sur Vercel, on utilise l'adresse de production fournie automatiquement par Vercel :
+ * ainsi le lien de la boutique, le QR code et les liens de partage ne pointent jamais vers une adresse inaccessible aux clients.
+ */
 export function getAppUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return raw.replace(/\/+$/, "");
+  const configured = (process.env.NEXT_PUBLIC_APP_URL ?? "").trim().replace(/\/+$/, "");
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+  if (configured && !(isLocal && process.env.VERCEL)) return configured;
+
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercelHost) return `https://${vercelHost.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  return configured || "http://localhost:3000";
 }
 
 /** Lien complet d'une boutique : https://wappshop.app/{slug}. */
