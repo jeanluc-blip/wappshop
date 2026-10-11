@@ -2,16 +2,15 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle, Search, Share2, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "zustand";
 import { Logo } from "@/components/brand/Logo";
-import { BottomNav } from "@/components/storefront/BottomNav";
-import { ShopBanner } from "@/components/storefront/ShopBanner";
 import { AboutSheetBody } from "@/components/storefront/AboutSheet";
 import { CartSheetBody, type CartView } from "@/components/storefront/CartSheet";
 import { CategoryBar } from "@/components/storefront/CategoryBar";
 import { LegalSheetBody } from "@/components/storefront/LegalSheet";
+import { ShareSheetBody } from "@/components/share/ShareSheetBody";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { ProductSheetBody } from "@/components/storefront/ProductSheet";
 import { Sheet } from "@/components/storefront/Sheet";
@@ -23,12 +22,13 @@ import {
   unitPrice,
   type Category,
   type Product,
-  type Review,
   type Selection,
   type ShopPublic,
   type Zone,
 } from "@/lib/catalog";
 import { createCartStore } from "@/lib/cart";
+import { track } from "@/lib/track";
+import type { Trust } from "@/lib/storefront";
 import { formatPrice } from "@/lib/format";
 import { questionMessage, waLink } from "@/lib/whatsapp";
 
@@ -37,12 +37,9 @@ type StorefrontProps = {
   categories: Category[];
   products: Product[];
   zones: Zone[];
-  reviews: Review[];
-  deliveredCount: number;
   qrSvg: string;
-  /** Adresse publique de la boutique (sans « / » final), base des liens de produits. */
-  baseUrl: string;
-  /** Produit à ouvrir dès l'arrivée (lien partagé d'un produit). */
+  trust: Trust;
+  /** Lien direct vers un produit : sa fiche s'ouvre dès l'arrivée sur la boutique. */
   initialProductId?: string;
 };
 
@@ -51,10 +48,10 @@ type SheetState =
   | { type: "product"; id: string; mode: "detail" | "variants" }
   | { type: "cart" }
   | { type: "about" }
-  | { type: "categories" }
-  | { type: "legal" };
+  | { type: "legal" }
+  | { type: "share"; productId: string | null };
 
-export function Storefront({ shop, categories, products, zones, reviews, deliveredCount, qrSvg, baseUrl, initialProductId }: StorefrontProps) {
+export function Storefront({ shop, categories, products, zones, qrSvg, trust, initialProductId }: StorefrontProps) {
   const [store] = useState(() => createCartStore(shop.slug));
   const lines = useStore(store, (state) => state.lines);
   const [sheet, setSheet] = useState<SheetState>(() =>
@@ -67,6 +64,12 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
   const deferredQuery = useDeferredValue(query);
 
   const productsById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+
+  // Arrivée par un lien direct vers un produit : la consultation compte comme une vue du produit.
+  useEffect(() => {
+    if (initialProductId && products.some((product) => product.id === initialProductId)) track(shop.slug, "product_view", initialProductId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lecture du panier conservé sur l'appareil, puis retrait des lignes qui ne sont plus valables.
   useEffect(() => {
@@ -116,13 +119,11 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
     );
   }, [products, categoryId, deferredQuery]);
 
-  const popular = useMemo(() => products.filter((product) => product.featured).slice(0, 12), [products]);
-  const showPopular = popular.length > 0 && categoryId === "all" && !deferredQuery.trim();
-  const showBanner = Boolean(shop.bannerTitle || shop.bannerUrl);
-
-  function goToProducts() {
-    document.getElementById("produits")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  // Produits en vedette : affichés en premier, seulement quand aucun filtre n'est actif.
+  const filtering = categoryId !== "all" || deferredQuery.trim() !== "";
+  const featuredList = useMemo(() => visible.filter((product) => product.featured), [visible]);
+  const restList = useMemo(() => visible.filter((product) => !product.featured), [visible]);
+  const showFeatured = !filtering && featuredList.length > 0;
 
   const addProduct = useCallback(
     (product: Product) => {
@@ -135,9 +136,10 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
         return;
       }
       store.getState().add(product.id, {});
+      track(shop.slug, "add_to_cart", product.id);
       toast.success("Ajouté au panier");
     },
-    [store],
+    [store, shop.slug],
   );
   const decrementProduct = useCallback(
     (product: Product) => {
@@ -147,26 +149,25 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
     },
     [store],
   );
-  const openDetail = useCallback((product: Product) => setSheet({ type: "product", id: product.id, mode: "detail" }), []);
+  const openDetail = useCallback(
+    (product: Product) => {
+      setSheet({ type: "product", id: product.id, mode: "detail" });
+      track(shop.slug, "product_view", product.id);
+    },
+    [shop.slug],
+  );
   const closeSheet = useCallback(() => setSheet(null), []);
 
   function addWithSelection(product: Product, selection: Selection) {
     store.getState().add(product.id, selection);
+    track(shop.slug, "add_to_cart", product.id);
     toast.success("Ajouté au panier");
     setSheet(null);
   }
 
   const sheetProduct = sheet?.type === "product" ? productsById.get(sheet.id) : undefined;
   const hasCartBar = cartCount > 0;
-  // Preuve de confiance : uniquement des données réelles, jamais de valeur inventée.
-  const average = reviews.length > 0 ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : null;
-  const trust = [
-    average !== null ? `★ ${average.toFixed(1).replace(".", ",")} (${reviews.length} avis)` : null,
-    deliveredCount > 0 ? `${deliveredCount} commande${deliveredCount > 1 ? "s" : ""} livrée${deliveredCount > 1 ? "s" : ""}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const fabBottom = hasCartBar ? "calc(140px + env(safe-area-inset-bottom, 0px))" : "calc(76px + env(safe-area-inset-bottom, 0px))";
+  const fabBottom = hasCartBar ? "calc(76px + env(safe-area-inset-bottom, 0px))" : "calc(16px + env(safe-area-inset-bottom, 0px))";
 
   return (
     <div className="min-h-dvh bg-background">
@@ -184,14 +185,20 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
         )}
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-bold">{shop.name}</h1>
-          {trust && <p className="truncate text-sm text-muted">{trust}</p>}
+          <TrustLine trust={trust} />
         </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setSheet({ type: "share", productId: null })} aria-label="Partager la boutique">
+          <Share2 size={16} aria-hidden="true" />
+          <span className="max-[380px]:sr-only">Partager</span>
+        </Button>
         <Button type="button" variant="outline" size="sm" onClick={() => setSheet({ type: "about" })}>
           À propos
         </Button>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4">
+      {chips.length > 0 && <CategoryBar categories={chips} active={categoryId} onSelect={setCategoryId} />}
+
+      <main className="mx-auto max-w-5xl px-4 pb-40 pt-4">
         {products.length > 0 && (
           <div className="relative mb-4">
             <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -207,36 +214,6 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
             />
           </div>
         )}
-        {showBanner && <ShopBanner shopName={shop.name} title={shop.bannerTitle} imageUrl={shop.bannerUrl} onDiscover={goToProducts} />}
-      </div>
-
-      {chips.length > 0 && <CategoryBar categories={chips} active={categoryId} onSelect={setCategoryId} />}
-
-      <main className="mx-auto max-w-5xl px-4 pb-48 pt-4">
-        {showPopular && (
-          <section aria-labelledby="popular-title" className="mb-6">
-            <h2 id="popular-title" className="mb-3 text-lg font-bold">
-              Produits populaires
-            </h2>
-            <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {popular.map((product, index) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  quantity={quantities.get(product.id) ?? 0}
-                  priority={index < 2 && !showBanner}
-                  onOpen={openDetail}
-                  onAdd={addProduct}
-                  onDecrement={decrementProduct}
-                  className="w-[46%] shrink-0 snap-start sm:w-56"
-                />
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <div id="produits" className="scroll-mt-20" />
-        {showPopular && <h2 className="mb-3 text-lg font-bold">Tous les produits</h2>}
 
         {products.length === 0 ? (
           <p className="py-10 text-center text-muted">Cette boutique prépare son catalogue. Revenez bientôt.</p>
@@ -245,19 +222,41 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
             Aucun produit trouvé.
           </p>
         ) : (
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-4" aria-label="Produits">
-            {visible.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                quantity={quantities.get(product.id) ?? 0}
-                priority={index < 2 && !showBanner && !showPopular}
-                onOpen={openDetail}
-                onAdd={addProduct}
-                onDecrement={decrementProduct}
-              />
-            ))}
-          </ul>
+          <>
+            {showFeatured ? (
+              <>
+                <h2 className="mb-2 text-base font-bold">En vedette</h2>
+                <ProductGrid label="Produits en vedette" items={featuredList} startIndex={0} quantities={quantities} onOpen={openDetail} onAdd={addProduct} onDecrement={decrementProduct} />
+                {restList.length > 0 && (
+                  <>
+                    <h2 className="mb-2 mt-6 text-base font-bold">Tous les produits</h2>
+                    <ProductGrid label="Produits" items={restList} startIndex={featuredList.length} quantities={quantities} onOpen={openDetail} onAdd={addProduct} onDecrement={decrementProduct} />
+                  </>
+                )}
+              </>
+            ) : (
+              <ProductGrid label="Produits" items={visible} startIndex={0} quantities={quantities} onOpen={openDetail} onAdd={addProduct} onDecrement={decrementProduct} />
+            )}
+          </>
+        )}
+
+        {trust.latest.length > 0 && (
+          <section aria-labelledby="reviews-heading" className="mt-10">
+            <h2 id="reviews-heading" className="mb-2 text-base font-bold">
+              Avis de clients
+            </h2>
+            <ul className="space-y-3">
+              {trust.latest.map((review) => (
+                <li key={`${review.createdAt}-${review.comment.slice(0, 12)}`} className="rounded-2xl border border-border p-3 text-[15px]">
+                  <p className="flex items-center gap-1 font-semibold">
+                    <Star size={14} aria-hidden="true" className="fill-[#f59e0b] text-[#f59e0b]" />
+                    {review.rating} sur 5 <span className="font-normal text-muted">· {reviewDate.format(new Date(review.createdAt))}</span>
+                  </p>
+                  <p className="mt-1 whitespace-pre-line break-words">{review.comment}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <footer className="mt-12 border-t border-border pt-6 text-center text-sm text-muted">
@@ -283,7 +282,7 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
       </a>
 
       {hasCartBar && (
-        <div className="fixed inset-x-3 bottom-[calc(68px+env(safe-area-inset-bottom,0px))] z-40 mx-auto max-w-xl">
+        <div className="fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom,0px))] z-40 mx-auto max-w-xl">
           <Button type="button" size="full" className="shadow-[0_4px_14px_rgba(0,0,0,0.18)]" onClick={() => setSheet({ type: "cart" })}>
             Voir mon panier ({cartCount}) · {formatPrice(cartTotal)}
           </Button>
@@ -295,66 +294,97 @@ export function Storefront({ shop, categories, products, zones, reviews, deliver
           <ProductSheetBody
             key={`${sheetProduct.id}:${sheet.mode}`}
             product={sheetProduct}
+            shopSlug={shop.slug}
             mode={sheet.mode}
-            link={`${baseUrl}/${sheetProduct.id}`}
+            onShare={() => setSheet({ type: "share", productId: sheetProduct.id })}
             onAdd={(selection) => addWithSelection(sheetProduct, selection)}
           />
         )}
       </Sheet>
 
-      <BottomNav
-        cartCount={cartCount}
-        showCategories={chips.length > 0}
-        onHome={() => {
-          setCategoryId("all");
-          setQuery("");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onCategories={() => setSheet({ type: "categories" })}
-        onCart={() => setSheet({ type: "cart" })}
-        onAbout={() => setSheet({ type: "about" })}
-      />
-
-      <Sheet open={sheet?.type === "categories"} onClose={closeSheet} title="Catégories">
-        <ul>
-          {[{ id: "all", name: "Toutes les catégories" }, ...chips].map((category) => (
-            <li key={category.id}>
-              <button
-                type="button"
-                aria-pressed={categoryId === category.id}
-                onClick={() => {
-                  setCategoryId(category.id);
-                  setSheet(null);
-                  setTimeout(goToProducts, 50);
-                }}
-                className={`flex min-h-12 w-full cursor-pointer items-center rounded-xl px-3 text-left text-base ${categoryId === category.id ? "bg-surface font-bold" : ""}`}
-              >
-                {category.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Sheet>
-
       <Sheet open={sheet?.type === "cart"} onClose={closeSheet} title="Mon panier">
         <CartSheetBody
-          lines={cartLines}
-          total={cartTotal}
           shop={shop}
           zones={zones}
+          lines={cartLines}
+          subtotal={cartTotal}
           onSetQty={(key, qty) => store.getState().setQty(key, qty)}
-          onClear={() => store.getState().clear()}
+          onClear={() => {
+            store.getState().clear();
+            setSheet(null);
+          }}
+          onOrdered={() => store.getState().clear()}
           onClose={closeSheet}
         />
       </Sheet>
 
       <Sheet open={sheet?.type === "about"} onClose={closeSheet} title={`À propos de ${shop.name}`}>
-        <AboutSheetBody shop={shop} zones={zones} qrSvg={qrSvg} reviews={reviews} />
+        <AboutSheetBody shop={shop} zones={zones} qrSvg={qrSvg} />
+      </Sheet>
+
+      <Sheet open={sheet?.type === "share"} onClose={closeSheet} title={sheet?.type === "share" && sheet.productId ? "Partager ce produit" : "Partager la boutique"}>
+        {sheet?.type === "share" && (
+          <ShareSheetBody
+            key={sheet.productId ?? "shop"}
+            shopName={shop.name}
+            shopSlug={shop.slug}
+            shopLogoUrl={shop.logoUrl}
+            product={sheet.productId ? productsById.get(sheet.productId) : undefined}
+          />
+        )}
       </Sheet>
 
       <Sheet open={sheet?.type === "legal"} onClose={closeSheet} title="Mentions légales">
         <LegalSheetBody shop={shop} />
       </Sheet>
     </div>
+  );
+}
+
+const reviewDate = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "Africa/Porto-Novo" });
+
+type ProductGridProps = {
+  label: string;
+  items: Product[];
+  startIndex: number;
+  quantities: Map<string, number>;
+  onOpen: (product: Product) => void;
+  onAdd: (product: Product) => void;
+  onDecrement: (product: Product) => void;
+};
+
+function ProductGrid({ label, items, startIndex, quantities, onOpen, onAdd, onDecrement }: ProductGridProps) {
+  return (
+    <ul className="grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-4" aria-label={label}>
+      {items.map((product, index) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          quantity={quantities.get(product.id) ?? 0}
+          priority={startIndex + index < 2}
+          onOpen={onOpen}
+          onAdd={onAdd}
+          onDecrement={onDecrement}
+        />
+      ))}
+    </ul>
+  );
+}
+
+/** Étoiles et nombre de commandes livrées : seulement s'il y a des données réelles. */
+function TrustLine({ trust }: { trust: Trust }) {
+  if (trust.reviewCount === 0 && trust.deliveredCount === 0) return null;
+  const parts: string[] = [];
+  if (trust.reviewCount > 0 && trust.ratingAverage !== null) {
+    parts.push(`${trust.ratingAverage.toLocaleString("fr-FR")} sur 5 (${trust.reviewCount} avis)`);
+  }
+  if (trust.deliveredCount > 0) {
+    parts.push(`${trust.deliveredCount} commande${trust.deliveredCount > 1 ? "s" : ""} livrée${trust.deliveredCount > 1 ? "s" : ""}`);
+  }
+  return (
+    <p className="flex items-center gap-1 truncate text-sm text-muted">
+      {trust.reviewCount > 0 && <Star size={14} aria-hidden="true" className="shrink-0 fill-[#f59e0b] text-[#f59e0b]" />}
+      <span className="truncate">{parts.join(" · ")}</span>
+    </p>
   );
 }

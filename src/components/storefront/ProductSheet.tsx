@@ -18,10 +18,12 @@ type ProductSheetBodyProps = {
   /** « detail » : fiche produit avec galerie ; « variants » : seulement le choix de variantes. */
   mode: "detail" | "variants";
   onAdd: (selection: Selection) => void;
+  /** Ouvre la feuille de partage (réseaux sociaux) pour ce produit. */
+  onShare: () => void;
 };
 
 /** Contenu de la fiche produit / du choix de variantes (remonté à chaque produit : le choix repart de zéro). */
-export function ProductSheetBody({ product, shopSlug, mode, onAdd }: ProductSheetBodyProps) {
+export function ProductSheetBody({ product, shopSlug, mode, onAdd, onShare }: ProductSheetBodyProps) {
   const [selection, setSelection] = useState<Selection>({});
   const groups = groupVariants(product.variants);
   const missing = groups.filter((group) => !selection[group.name]).map((group) => group.name);
@@ -89,9 +91,14 @@ export function ProductSheetBody({ product, shopSlug, mode, onAdd }: ProductShee
         </>
       )}
       {mode === "detail" && (
-        <Button type="button" variant="ghost" size="full" className="mt-2" onClick={copyProductLink}>
-          Copier le lien du produit
-        </Button>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onShare}>
+            Partager
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={copyProductLink}>
+            Copier le lien
+          </Button>
+        </div>
       )}
     </div>
   );

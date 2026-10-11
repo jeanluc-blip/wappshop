@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { parseSource } from "@/lib/share";
 import { looksLikeSlug } from "@/lib/slug";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -10,6 +11,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const bodySchema = z.object({
   slug: z.string().refine(looksLikeSlug),
   sessionId: z.string().regex(/^[A-Za-z0-9-]{16,64}$/),
+  // Origine du partage (?src=...) : seulement une valeur de la liste fermée, sinon ignorée.
+  source: z.string().max(30).optional(),
 });
 
 const BOT_PATTERN =
@@ -46,6 +49,7 @@ export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return new NextResponse(null, { status: 400 });
   const { slug, sessionId } = parsed.data;
+  const source = parseSource(parsed.data.source);
 
   const admin = createAdminClient();
   if (!admin) {
@@ -71,7 +75,11 @@ export async function POST(request: NextRequest) {
     .limit(1);
   if (recent && recent.length > 0) return noContent();
 
-  const { error } = await admin.from("events").insert({ shop_id: shop.id, type: "visit", session_id: sessionId });
+  let { error } = await admin.from("events").insert({ shop_id: shop.id, type: "visit", session_id: sessionId, source });
+  if (error) {
+    // La colonne « source » vient de supabase/phase8.sql : tant qu'elle n'existe pas, on compte la visite sans origine.
+    ({ error } = await admin.from("events").insert({ shop_id: shop.id, type: "visit", session_id: sessionId }));
+  }
   if (error) console.error("Enregistrement de la visite impossible", error.message);
   return noContent();
 }

@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatPrice } from "@/lib/format";
 import { requireShop } from "@/lib/shop";
+import { parseSource, SOURCE_LABELS } from "@/lib/share";
 import { PERIODS, PERIOD_LABELS, parsePeriod, periodStart } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -22,11 +23,15 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 
   // Tout est lu avec les droits du vendeur connecté : la sécurité de la base (RLS) limite aux données de sa boutique.
   const supabase = await createClient();
-  const [visits, sent, delivered, reviews] = await Promise.all([
+  const [visits, sent, delivered, reviews, sourceRows, productEvents] = await Promise.all([
     supabase.from("events").select("session_id").eq("shop_id", shop.id).eq("type", "visit").gte("created_at", since).limit(MAX_EVENTS),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("shop_id", shop.id).gte("created_at", since),
     supabase.from("orders").select("total_amount").eq("shop_id", shop.id).eq("status", "delivered").gte("created_at", since).limit(MAX_EVENTS),
     supabase.from("reviews").select("rating, comment, created_at").eq("shop_id", shop.id).order("created_at", { ascending: false }).limit(1000).returns<ReviewRow[]>(),
+    // Origine des visiteurs et activité par produit : colonnes de supabase/phase8.sql. Tant qu'elles n'existent pas, ces deux requêtes échouent
+    // et les sections correspondantes restent simplement masquées.
+    supabase.from("events").select("source").eq("shop_id", shop.id).eq("type", "visit").gte("created_at", since).limit(MAX_EVENTS),
+    supabase.from("events").select("type, product_id").eq("shop_id", shop.id).in("type", ["product_view", "add_to_cart"]).gte("created_at", since).limit(MAX_EVENTS),
   ]);
 
   const failed = Boolean(visits.error || sent.error || delivered.error || reviews.error);
@@ -38,6 +43,41 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const deliveredCount = deliveredOrders.length;
   const revenue = deliveredOrders.reduce((sum, row) => sum + Number(row.total_amount), 0);
   const conversion = visitors > 0 ? Math.min(100, Math.round((ordersSent / visitors) * 100)) : null;
+
+  // Sources : combien de visites par réseau (liens de partage ?src=...). Sans origine = « Direct ou autre ».
+  const sourceCounts = new Map<string, number>();
+  if (!sourceRows.error) {
+    for (const row of sourceRows.data ?? []) {
+      const known = parseSource(row.source as string | null);
+      const label = known ? SOURCE_LABELS[known] : "Direct ou autre";
+      sourceCounts.set(label, (sourceCounts.get(label) ?? 0) + 1);
+    }
+  }
+  const sources = [...sourceCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const sourcesTotal = sources.reduce((sum, [, count]) => sum + count, 0);
+
+  // Produits : consultations et ajouts au panier, les plus consultés d'abord.
+  const perProduct = new Map<string, { views: number; carts: number }>();
+  if (!productEvents.error) {
+    for (const row of productEvents.data ?? []) {
+      const id = row.product_id as string | null;
+      if (!id) continue;
+      const entry = perProduct.get(id) ?? { views: 0, carts: 0 };
+      if (row.type === "product_view") entry.views += 1;
+      else entry.carts += 1;
+      perProduct.set(id, entry);
+    }
+  }
+  const topIds = [...perProduct.entries()]
+    .sort((a, b) => b[1].views + b[1].carts * 2 - (a[1].views + a[1].carts * 2))
+    .slice(0, 5)
+    .map(([id]) => id);
+  const names = new Map<string, string>();
+  if (topIds.length > 0) {
+    const { data: named } = await supabase.from("products").select("id, name").eq("shop_id", shop.id).in("id", topIds);
+    for (const row of named ?? []) names.set(row.id as string, row.name as string);
+  }
+  const topProducts = topIds.filter((id) => names.has(id)).map((id) => ({ name: names.get(id)!, ...perProduct.get(id)! }));
 
   const allReviews = reviews.data ?? [];
   const average = allReviews.length > 0 ? allReviews.reduce((sum, review) => sum + Number(review.rating), 0) / allReviews.length : null;
@@ -76,6 +116,49 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <Metric label="Taux de conversion" value={conversion === null ? "-" : `${conversion} %`} />
         <Metric label="Chiffre d'affaires livré" value={formatPrice(revenue)} wide />
       </dl>
+
+      <Card aria-labelledby="sources-title">
+        <h2 id="sources-title" className="text-base font-bold">
+          D&apos;où viennent vos visiteurs
+        </h2>
+        {sources.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">
+            Rien à afficher pour l&apos;instant. Partagez vos produits avec le bouton « Partager » : chaque réseau (WhatsApp, Facebook, Telegram...) a son propre
+            lien, et vous verrez ici lequel vous amène des visiteurs. Instagram et TikTok sont comptés si vous collez le lien copié depuis la feuille de partage.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1.5 text-[15px]">
+            {sources.map(([label, count]) => (
+              <li key={label} className="flex justify-between gap-3">
+                <span>{label}</span>
+                <span>
+                  <b>{count}</b> <span className="text-sm text-muted">({Math.round((count / sourcesTotal) * 100)} %)</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card aria-labelledby="products-title">
+        <h2 id="products-title" className="text-base font-bold">
+          Produits les plus consultés
+        </h2>
+        {topProducts.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">Pas encore de données : elles apparaissent quand des visiteurs ouvrent vos produits ou les ajoutent au panier.</p>
+        ) : (
+          <ul className="mt-2 space-y-2 text-[15px]">
+            {topProducts.map((product) => (
+              <li key={product.name} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">{product.name}</span>
+                <span className="shrink-0 text-sm text-muted">
+                  {product.views} vue{product.views > 1 ? "s" : ""} · {product.carts} au panier
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card aria-label="Comment lire ces chiffres">
         <h2 className="text-base font-bold">Comment lire ces chiffres</h2>

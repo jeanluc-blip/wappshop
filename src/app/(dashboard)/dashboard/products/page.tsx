@@ -15,7 +15,7 @@ type Row = {
   old_price: number | null;
   badge: "none" | "new" | "promo";
   sold_out: boolean;
-  featured: boolean;
+  featured?: boolean;
   categories: { category_name: string } | null;
   images: { image_url: string; position: number }[];
 };
@@ -23,12 +23,12 @@ type Row = {
 export default async function ProductsPage() {
   const { shop } = await requireShop();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("products")
-    .select("id, name, price, old_price, badge, sold_out, featured, categories(category_name), images(image_url, position)")
-    .eq("shop_id", shop.id)
-    .order("created_at", { ascending: false })
-    .returns<Row[]>();
+  const COLUMNS = "id, name, price, old_price, badge, sold_out, categories(category_name), images(image_url, position)";
+  const load = (columns: string) =>
+    supabase.from("products").select(columns).eq("shop_id", shop.id).order("created_at", { ascending: false }).returns<Row[]>();
+  // « featured » vient de supabase/phase8.sql : tant que la colonne n'existe pas, on lit sans elle.
+  let { data, error } = await load(`featured, ${COLUMNS}`);
+  if (error) ({ data, error } = await load(COLUMNS));
 
   const items: ProductItem[] = (data ?? []).map((row) => {
     const first = [...row.images].sort((a, b) => a.position - b.position)[0];
@@ -39,7 +39,7 @@ export default async function ProductsPage() {
       oldPrice: row.old_price === null ? null : Number(row.old_price),
       badge: row.badge,
       soldOut: row.sold_out,
-      featured: row.featured,
+      featured: row.featured === true,
       categoryName: row.categories?.category_name ?? null,
       imageUrl: first?.image_url ?? null,
       photoCount: row.images.length,
@@ -59,7 +59,7 @@ export default async function ProductsPage() {
       ) : (
         <ul aria-label="Vos produits">
           {items.map((item) => (
-            <ProductRow key={item.id} product={item} shopLink={shopUrl(shop.slug)} />
+            <ProductRow key={item.id} product={item} shopLink={shopUrl(shop.slug)} shop={{ name: shop.shop_name, slug: shop.slug, logoUrl: shop.logo_url }} />
           ))}
         </ul>
       )}

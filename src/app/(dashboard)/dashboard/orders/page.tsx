@@ -5,7 +5,7 @@ import { ORDER_STATUSES, STATUS_LABELS, type Fulfillment, type OrderItem, type O
 import { requireShop } from "@/lib/shop";
 import { shopUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
-import { reviewRequestMessage } from "@/lib/whatsapp";
+import { customerMessage, reviewRequestMessage } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Commandes" };
@@ -17,6 +17,7 @@ type Row = {
   total_amount: number | string;
   status: OrderStatus;
   customer_name: string | null;
+  customer_phone?: string | null;
   fulfillment: Fulfillment | null;
   delivery_zone: string | null;
   delivery_address: string | null;
@@ -34,14 +35,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const filter = ORDER_STATUSES.find((status) => status === statut) ?? null;
 
   const supabase = await createClient();
-  let query = supabase
-    .from("orders")
-    .select("id, order_number, items_details, total_amount, status, customer_name, fulfillment, delivery_zone, delivery_address, delivery_fee, payment_method, review_token, created_at")
-    .eq("shop_id", shop.id)
-    .order("created_at", { ascending: false })
-    .limit(PAGE_SIZE);
-  if (filter) query = query.eq("status", filter);
-  const { data, error } = await query.returns<Row[]>();
+  const COLUMNS =
+    "id, order_number, items_details, total_amount, status, customer_name, fulfillment, delivery_zone, delivery_address, delivery_fee, payment_method, review_token, created_at";
+  const load = (columns: string) => {
+    let query = supabase.from("orders").select(columns).eq("shop_id", shop.id).order("created_at", { ascending: false }).limit(PAGE_SIZE);
+    if (filter) query = query.eq("status", filter);
+    return query.returns<Row[]>();
+  };
+  // « customer_phone » vient de supabase/phase8.sql : tant que la colonne n'existe pas, on lit sans elle.
+  let { data, error } = await load(`customer_phone, ${COLUMNS}`);
+  if (error) ({ data, error } = await load(COLUMNS));
 
   const rows = data ?? [];
   const ids = rows.map((row) => row.id);
@@ -53,6 +56,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     orderNumber: Number(row.order_number),
     status: row.status,
     customerName: row.customer_name,
+    customerPhone: row.customer_phone ?? null,
+    customerMessage: customerMessage({
+      status: row.status,
+      customerName: row.customer_name,
+      shopName: shop.shop_name,
+      orderNumber: Number(row.order_number),
+      reviewLink: row.status === "delivered" ? `${shopUrl(shop.slug)}/avis/${row.review_token}` : null,
+    }),
     fulfillment: row.fulfillment,
     zone: row.delivery_zone,
     address: row.delivery_address,

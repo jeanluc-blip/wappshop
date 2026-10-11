@@ -24,6 +24,7 @@ Après chaque changement de variable : Deployments > Redeploy.
 
 ## 3. Supabase
 
+- **Script `supabase/phase8.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une seule fois, sans danger s'il est relancé). Il active les produits en vedette, le numéro WhatsApp du client, l'origine des visiteurs et les statistiques par produit. Tant qu'il n'est pas lancé, le site fonctionne normalement : ces quatre fonctions restent simplement inactives.
 - Authentication > URL Configuration : **Site URL** = adresse du site ; **Redirect URLs** = `{adresse}/auth/callback`.
 - Authentication > Email Templates (« Magic Link » et « Confirm signup ») : afficher `{{ .Token }}`, pas `{{ .ConfirmationURL }}`.
 - Authentication > Providers > Google : identifiant et secret OAuth ; dans Google Cloud, l'URI de redirection autorisé est la « Callback URL » indiquée par Supabase.
@@ -58,6 +59,11 @@ Après chaque changement de variable : Deployments > Redeploy.
 6. Stats : visiteurs, commandes envoyées et livrées, chiffre d'affaires, avis.
 7. Lien produit : coller `/{boutique}/{id}` dans WhatsApp : carte avec photo et prix.
 8. Importer plusieurs photos depuis iPhone (Safari) et Android (Chrome).
+9. Partage : depuis la fiche d'un produit, « Partager » ouvre la feuille avec l'image ; vérifier le menu natif du téléphone (WhatsApp, Instagram, TikTok, Facebook), le téléchargement de l'image et les boutons WhatsApp, Facebook, Telegram, X.
+10. Origines : ouvrir un lien reçu par « Partager » (contient `?src=...`) depuis un autre téléphone ; la visite apparaît dans Stats sous le bon réseau (après `phase8.sql`).
+11. Vedette : « Mettre en vedette » sur un produit ; il apparaît en premier dans la section « En vedette » de la boutique.
+12. Téléphone client : passer une commande avec un numéro ; le bouton « Écrire au client sur WhatsApp » apparaît dans Commandes.
+13. Affiche : `/{boutique}/affiche` s'imprime sur une page A4 avec le QR code.
 
 ## 7. Après la mise en ligne
 

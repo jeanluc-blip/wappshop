@@ -45,6 +45,8 @@ export const orderRequestSchema = z.object({
     .regex(/^[A-Za-z0-9-]{16,64}$/)
     .optional(),
   customerName: z.string().trim().min(2, "Saisissez votre nom").max(80, "80 caractères maximum"),
+  /** Numéro WhatsApp du client (facultatif) : permet au vendeur de le recontacter. */
+  customerPhone: z.string().trim().max(30, "Numéro trop long").optional(),
   fulfillment: z.enum(["delivery", "pickup"], { error: "Choisissez livraison ou retrait" }),
   zoneId: z.string().regex(UUID_PATTERN).optional(),
   address: z.string().trim().max(200, "200 caractères maximum").optional(),
@@ -71,3 +73,11 @@ export type OrderResponse = {
   message: string;
   whatsappUrl: string;
 };
+
+/** Numéro nettoyé : chiffres seulement (avec un « + » initial éventuel), 8 à 15 chiffres. `null` si absent ou invalide. */
+export function cleanPhone(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return null;
+  return raw.trim().startsWith("+") || raw.trim().startsWith("00") ? `+${digits.replace(/^00/, "")}` : digits;
+}

@@ -62,6 +62,9 @@ export default async function DashboardPage() {
         shopPath={`/${shop.slug}`}
         shopLink={link}
         shopAddress={shopAddress(shop.slug)}
+        shopName={shop.shop_name}
+        shopSlug={shop.slug}
+        shopLogoUrl={shop.logo_url}
         qrSvg={svg}
         qrPng={png}
         items={items}

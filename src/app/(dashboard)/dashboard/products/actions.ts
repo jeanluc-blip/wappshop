@@ -68,7 +68,6 @@ export async function saveProduct(input: SaveProductInput): Promise<ActionResult
     badge: values.badge,
     old_price: isPromo ? parsePrice(values.oldPrice) : null,
     sold_out: values.soldOut,
-    featured: values.featured,
     description: values.description || null,
   };
 
@@ -204,6 +203,31 @@ export async function setProductSoldOut(id: string, soldOut: boolean): Promise<A
     .maybeSingle();
   if (error) {
     console.error("setProductSoldOut", error);
+    return fail(GENERIC_ERROR);
+  }
+  if (!data) return fail("Produit introuvable.");
+  refresh(ctx.shop.slug);
+  return { ok: true };
+}
+
+/** Met un produit en vedette (affiché en premier dans la boutique) ou le retire. */
+export async function setProductFeatured(id: string, featured: boolean): Promise<ActionResult> {
+  const ctx = await getShopContext();
+  if (!ctx) return fail(SESSION_ERROR);
+  if (!idSchema.safeParse(id).success) return fail("Produit introuvable.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .update({ featured })
+    .eq("id", id)
+    .eq("shop_id", ctx.shop.id)
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    console.error("setProductFeatured", error);
+    // La colonne « featured » vient de supabase/phase8.sql.
+    if (error.code === "42703") return fail("Cette fonction demande une mise à jour de la base de données (script phase8.sql dans Supabase).");
     return fail(GENERIC_ERROR);
   }
   if (!data) return fail("Produit introuvable.");

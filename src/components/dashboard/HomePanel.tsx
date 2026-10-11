@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Check, Circle, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { ShareSheetBody } from "@/components/share/ShareSheetBody";
+import { Sheet } from "@/components/storefront/Sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { copyText } from "@/lib/clipboard";
@@ -15,6 +17,9 @@ type HomePanelProps = {
   shopPath: string;
   shopLink: string;
   shopAddress: string;
+  shopName: string;
+  shopSlug: string;
+  shopLogoUrl: string | null;
   qrSvg: string;
   qrPng: string;
   items: StartItem[];
@@ -41,7 +46,8 @@ function subscribe(onChange: () => void) {
 }
 
 /** Accueil vendeur : liste de démarrage, lien de la boutique à copier, QR code. */
-export function HomePanel({ shopId, shopPath, shopLink, shopAddress, qrSvg, qrPng, items }: HomePanelProps) {
+export function HomePanel({ shopId, shopPath, shopLink, shopAddress, shopName, shopSlug, shopLogoUrl, qrSvg, qrPng, items }: HomePanelProps) {
+  const [shareOpen, setShareOpen] = useState(false);
   const copied = useSyncExternalStore(
     subscribe,
     () => readCopied(shopId),
@@ -124,6 +130,9 @@ export function HomePanel({ shopId, shopPath, shopLink, shopAddress, qrSvg, qrPn
             </Link>
           </Button>
         </div>
+        <Button type="button" variant="outline" size="full" className="mt-2" onClick={() => setShareOpen(true)}>
+          Partager ma boutique (WhatsApp, Facebook, Instagram, TikTok...)
+        </Button>
         <div className="mt-5 text-center">
           <div
             role="img"
@@ -138,8 +147,17 @@ export function HomePanel({ shopId, shopPath, shopLink, shopAddress, qrSvg, qrPn
               Télécharger le QR code (PNG)
             </a>
           </Button>
+          <Button asChild variant="outline" size="sm" className="ml-2 mt-2">
+            <Link href={`${shopPath}/affiche`} target="_blank">
+              Imprimer l&apos;affiche
+            </Link>
+          </Button>
         </div>
       </Card>
+
+      <Sheet open={shareOpen} onClose={() => setShareOpen(false)} title="Partager ma boutique">
+        {shareOpen && <ShareSheetBody shopName={shopName} shopSlug={shopSlug} shopLogoUrl={shopLogoUrl} />}
+      </Sheet>
     </>
   );
 }

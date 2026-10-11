@@ -13,7 +13,7 @@ import { describeSelection, type Product, type Selection, type ShopPublic, type 
 import { copyText } from "@/lib/clipboard";
 import { CHECKOUT_ENABLED } from "@/lib/features";
 import { formatPrice } from "@/lib/format";
-import type { Fulfillment, OrderResponse } from "@/lib/orders";
+import { cleanPhone, type Fulfillment, type OrderResponse } from "@/lib/orders";
 import { questionMessage, waLink } from "@/lib/whatsapp";
 
 export type CartView = { key: string; product: Product; selection: Selection; qty: number; unit: number };
@@ -31,7 +31,7 @@ type CartSheetProps = {
   onClose: () => void;
 };
 
-type FieldErrors = Partial<Record<"name" | "zone" | "address" | "payment", string>>;
+type FieldErrors = Partial<Record<"name" | "phone" | "zone" | "address" | "payment", string>>;
 
 const GENERIC_ERROR = "Votre commande n'a pas pu être envoyée. Vérifiez votre connexion et réessayez.";
 
@@ -51,6 +51,7 @@ export function CartSheetBody({ shop, zones, lines, subtotal, onSetQty, onClear,
   const [zoneId, setZoneId] = useState("");
   const [address, setAddress] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [payment, setPayment] = useState(shop.paymentMethods.length === 1 ? shop.paymentMethods[0] : "");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export function CartSheetBody({ shop, zones, lines, subtotal, onSetQty, onClear,
   function validate(): FieldErrors {
     const found: FieldErrors = {};
     if (name.trim().length < 2) found.name = "Saisissez votre nom";
+    if (phone.trim() !== "" && !cleanPhone(phone)) found.phone = "Numéro invalide (8 à 15 chiffres)";
     if (fulfillment === "delivery") {
       if (zones.length > 0 && !zone) found.zone = "Choisissez une zone de livraison";
       if (address.trim().length < 3) found.address = "Indiquez votre adresse ou un point de repère";
@@ -97,6 +99,7 @@ export function CartSheetBody({ shop, zones, lines, subtotal, onSetQty, onClear,
           slug: shop.slug,
           sessionId: readSessionId(shop.slug),
           customerName: name.trim(),
+          customerPhone: phone.trim() || undefined,
           fulfillment,
           zoneId: fulfillment === "delivery" && zone ? zone.id : undefined,
           address: fulfillment === "delivery" ? address.trim() : undefined,
@@ -238,6 +241,26 @@ export function CartSheetBody({ shop, zones, lines, subtotal, onSetQty, onClear,
               aria-describedby={errors.name ? `${formId}-name-error` : undefined}
             />
             <FieldError id={`${formId}-name-error`} message={errors.name} />
+          </div>
+
+          <div className="mb-3">
+            <Label htmlFor={`${formId}-phone`}>Votre numéro WhatsApp (facultatif)</Label>
+            <Input
+              id={`${formId}-phone`}
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              autoComplete="tel"
+              maxLength={30}
+              placeholder="+229 ..."
+              aria-invalid={errors.phone ? true : undefined}
+              aria-describedby={`${formId}-phone-help${errors.phone ? ` ${formId}-phone-error` : ""}`}
+            />
+            <p id={`${formId}-phone-help`} className="mt-1 text-sm text-muted">
+              Pour que {shop.name} puisse vous recontacter. Il ne sera pas utilisé pour autre chose.
+            </p>
+            <FieldError id={`${formId}-phone-error`} message={errors.phone} />
           </div>
 
           {shop.paymentMethods.length > 0 && (

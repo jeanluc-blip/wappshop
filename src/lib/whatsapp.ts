@@ -65,3 +65,24 @@ export function reviewRequestMessage(customerName: string | null, shopName: stri
   const hello = customerName ? `Bonjour ${customerName},` : "Bonjour,";
   return `${hello} merci pour votre commande n° ${orderNumber} chez ${shopName}. Votre avis nous aide beaucoup : vous pouvez le donner en une minute ici : ${link}`;
 }
+
+/** Message du vendeur au client, selon l'avancement de la commande (texte brut, sans emoji). */
+export function customerMessage(input: {
+  status: "new" | "confirmed" | "delivered";
+  customerName: string | null;
+  shopName: string;
+  orderNumber: number;
+  reviewLink?: string | null;
+}): string {
+  const hello = input.customerName ? `Bonjour ${input.customerName},` : "Bonjour,";
+  if (input.status === "new") {
+    return `${hello} c'est ${input.shopName}. Nous avons bien reçu votre commande n° ${input.orderNumber}. Nous revenons vers vous très vite pour la confirmer.`;
+  }
+  if (input.status === "confirmed") {
+    return `${hello} c'est ${input.shopName}. Votre commande n° ${input.orderNumber} est confirmée. Nous vous tenons au courant de la livraison.`;
+  }
+  if (input.reviewLink) {
+    return reviewRequestMessage(input.customerName, input.shopName, input.orderNumber, input.reviewLink);
+  }
+  return `${hello} merci pour votre commande n° ${input.orderNumber} chez ${input.shopName}. À très bientôt !`;
+}

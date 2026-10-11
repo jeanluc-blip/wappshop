@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { copyText } from "@/lib/clipboard";
+import { waLink } from "@/lib/whatsapp";
 import { formatPrice } from "@/lib/format";
 import { FULFILLMENT_LABELS, ORDER_STATUSES, STATUS_LABELS, type Fulfillment, type OrderItem, type OrderStatus } from "@/lib/orders";
 
@@ -17,6 +18,10 @@ export type OrderView = {
   orderNumber: number;
   status: OrderStatus;
   customerName: string | null;
+  /** Numéro WhatsApp donné par le client (facultatif). */
+  customerPhone: string | null;
+  /** Message prêt à envoyer au client selon l'état de la commande. */
+  customerMessage: string;
   fulfillment: Fulfillment | null;
   zone: string | null;
   address: string | null;
@@ -117,6 +122,12 @@ export function OrderCard({ order }: { order: OrderView }) {
               <dd className="min-w-0 break-words">{order.address}</dd>
             </div>
           )}
+          {order.customerPhone && (
+            <div className="flex gap-2">
+              <dt className="text-muted">Téléphone :</dt>
+              <dd>{order.customerPhone}</dd>
+            </div>
+          )}
           {order.paymentMethod && (
             <div className="flex gap-2">
               <dt className="text-muted">Paiement :</dt>
@@ -146,7 +157,14 @@ export function OrderCard({ order }: { order: OrderView }) {
             Avis du client : {order.rating} sur 5
           </p>
         )}
-        {order.status === "delivered" && order.rating === null && order.reviewRequest && (
+        {order.customerPhone && (
+          <Button asChild variant="outline" size="full" className="mt-3">
+            <a href={waLink(order.customerPhone, order.customerMessage)} target="_blank" rel="noopener noreferrer">
+              {order.status === "delivered" && order.rating === null && order.reviewRequest ? "Demander un avis sur WhatsApp" : "Écrire au client sur WhatsApp"}
+            </a>
+          </Button>
+        )}
+        {order.status === "delivered" && order.rating === null && order.reviewRequest && !order.customerPhone && (
           <Button type="button" variant="outline" size="full" className="mt-3" onClick={copyReviewRequest}>
             Copier la demande d&apos;avis
           </Button>
