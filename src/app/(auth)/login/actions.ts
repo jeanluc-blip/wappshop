@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isRateLimited } from "@/lib/rate-limit";
+import { createRateLimiter } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { emailSchema, otpSchema, secretCodeSchema, signInCodeSchema } from "@/lib/validators";
 
@@ -122,6 +122,10 @@ export async function verifyOtp(emailInput: string, codeInput: string): Promise<
   redirect("/login/code");
 }
 
+// Limites de tentatives de connexion par code secret : par adresse IP, et par email.
+const ipLimiter = createRateLimiter(10, 60_000);
+const emailLimiter = createRateLimiter(8, 10 * 60_000);
+
 async function callerIp(): Promise<string> {
   return (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
@@ -132,7 +136,7 @@ export async function signInWithCode(emailInput: string, codeInput: string): Pro
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Informations invalides." };
   const { email, code } = parsed.data;
 
-  if (isRateLimited(`signin-ip:${await callerIp()}`, 10) || isRateLimited(`signin-email:${email}`, 8, 10 * 60_000)) {
+  if (ipLimiter(`signin-ip:${await callerIp()}`) || emailLimiter(`signin-email:${email}`)) {
     return { ok: false, message: "Trop de tentatives. Patientez quelques minutes ou recevez un code par email." };
   }
 

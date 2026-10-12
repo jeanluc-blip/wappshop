@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   const phone = cleanPhone(input.customerPhone);
   let { data: saved, error: insertError } = await admin
     .from("orders")
-    .insert(phone ? { ...orderRow, customer_phone: phone } : orderRow)
+    .insert((phone ? { ...orderRow, customer_phone: phone } : orderRow) as Record<string, unknown>)
     .select("order_number")
     .single<{ order_number: number }>();
   if (insertError && phone) {
