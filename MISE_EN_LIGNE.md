@@ -19,11 +19,16 @@ Les trois commandes doivent se terminer sans erreur. Corrigez-les avant de publi
 | `SUPABASE_PUBLISHABLE_KEY` | clé publiable |
 | `SUPABASE_SECRET_KEY` | clé secrète (serveur uniquement, jamais dans GitHub) |
 | `NEXT_PUBLIC_APP_URL` | adresse du site, sans `/` final (ex. `https://wappshop.vercel.app`) |
+| `ADMIN_EMAILS` | votre adresse email de connexion à WappShop (plusieurs : séparées par des virgules). Seules ces adresses accèdent à `/admin` |
+| `ANTHROPIC_API_KEY` | clé de l'API Anthropic pour l'assistant de vente (console.anthropic.com > API keys). Facturée à l'usage |
+| `ASSISTANT_MODEL` | facultatif : modèle de l'assistant (par défaut `claude-haiku-5-5`) |
+| `ASSISTANT_DAILY_LIMIT` | facultatif : messages par vendeur et par jour (par défaut 30) |
 
 Après chaque changement de variable : Deployments > Redeploy.
 
 ## 3. Supabase
 
+- **Script `supabase/phase9.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une fois ; relançable sans danger). Il crée la messagerie administrateur/vendeurs et le compteur de l'assistant. Tant qu'il n'est pas lancé, la messagerie et l'assistant affichent « bientôt disponible ».
 - **Script `supabase/phase8.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une seule fois, sans danger s'il est relancé). Il active les produits en vedette, le numéro WhatsApp du client, l'origine des visiteurs et les statistiques par produit. Tant qu'il n'est pas lancé, le site fonctionne normalement : ces quatre fonctions restent simplement inactives.
 - Authentication > URL Configuration : **Site URL** = adresse du site ; **Redirect URLs** = `{adresse}/auth/callback`.
 - Authentication > Email Templates (« Magic Link » et « Confirm signup ») : afficher `{{ .Token }}`, pas `{{ .ConfirmationURL }}`.
@@ -63,7 +68,11 @@ Après chaque changement de variable : Deployments > Redeploy.
 10. Origines : ouvrir un lien reçu par « Partager » (contient `?src=...`) depuis un autre téléphone ; la visite apparaît dans Stats sous le bon réseau (après `phase8.sql`).
 11. Vedette : « Mettre en vedette » sur un produit ; il apparaît en premier dans la section « En vedette » de la boutique.
 12. Téléphone client : passer une commande avec un numéro ; le bouton « Écrire au client sur WhatsApp » apparaît dans Commandes.
-13. Affiche : `/{boutique}/affiche` s'imprime sur une page A4 avec le QR code.
+13. Espace administrateur : connecté avec l'email de `ADMIN_EMAILS`, ouvrir `/admin` ; avec un autre compte vendeur, `/admin` doit afficher « Page introuvable ». Envoyer un message à un vendeur ; il apparaît avec une pastille dans son onglet Messages ; sa réponse apparaît en « non lu » chez vous.
+14. Annonce : envoyer une annonce à « Vendeurs sans produit » et vérifier la réception chez un vendeur de test.
+15. Assistant administrateur : `/admin/assistant`, demander « Qui dois-je accompagner en priorité ? » ; vérifier la dictée, l'envoi automatique et le bouton Copier. Un compte non administrateur doit recevoir une erreur 403 sur `/api/admin-assistant`.
+16. Assistant vendeur : poser une question (écrite puis dictée sur Chrome/Android) ; vérifier la limite quotidienne.
+17. Affiche : `/{boutique}/affiche` s'imprime sur une page A4 avec le QR code.
 
 ## 7. Après la mise en ligne
 

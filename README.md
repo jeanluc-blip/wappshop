@@ -42,3 +42,11 @@ npm run lint && npm run typecheck && npm run build
 - Affiche imprimable avec QR code : `/{boutique}/affiche`.
 - Le paiement Mobile Money n'est pas inclus (prévu plus tard).
 
+## Phases 9 et 10 : espace administrateur, messagerie, assistant de vente
+
+- `supabase/phase9.sql` à lancer dans Supabase (tables `messages` et `assistant_usage`).
+- `/admin` : réservé aux emails de `ADMIN_EMAILS`. Liste des vendeurs (se remplit toute seule), fiche par vendeur, conversation, annonces à plusieurs vendeurs. Toutes les lectures et actions admin passent par le serveur et revérifient l'administrateur.
+- Messagerie vendeur : `/dashboard/messages` (pastille dans l'en-tête).
+- Assistant de vente : `/dashboard/assistant`, appel serveur à l'API Anthropic (`/api/assistant`) avec les chiffres de la boutique du vendeur seulement (jamais de données clients). Limite par vendeur et par jour. Dictée et lecture vocale via les fonctions du navigateur.
+- Assistant administrateur : `/admin/assistant` (appel serveur `/api/admin-assistant`, réservé à `ADMIN_EMAILS`). Il reçoit les noms de boutiques et des chiffres, jamais d'email, téléphone ni donnée de client, et ne peut rien envoyer lui-même. Appel commun aux deux assistants : `src/lib/assistant-llm.ts`.
+
