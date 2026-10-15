@@ -19,7 +19,7 @@ export default async function AssistantPage() {
         {shop.shop_name}.
       </p>
       {enabled ? (
-        <AssistantChat scope={shop.id} />
+        <AssistantChat />
       ) : (
         <p role="note" className="rounded-xl border border-border bg-surface p-3 text-sm">
           L&apos;assistant sera disponible très bientôt. En attendant, vous pouvez écrire à l&apos;équipe dans{" "}

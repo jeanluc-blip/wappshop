@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Politique de confidentialité" };
 
 // Remplacez cette adresse par votre email de contact.
 const CONTACT_EMAIL = "jeanluckpekpede@gmail.com";
-const LAST_UPDATE = "8 octobre 2026";
+const LAST_UPDATE = "15 octobre 2026";
 
 export default function PrivacyPage() {
   return (
@@ -62,6 +62,24 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mt-6 space-y-2">
+        <h2 className="text-lg font-semibold">Assistants intelligents</h2>
+        <p>
+          WappShop propose un assistant de vente aux vendeurs (et un assistant à l&apos;administrateur). Pour
+          répondre, l&apos;assistant envoie à un fournisseur externe d&apos;intelligence artificielle (actuellement
+          Google, avec son modèle Gemini) vos questions, vos derniers échanges, un résumé des échanges
+          précédents et des chiffres de votre boutique : nom, produits, prix, commandes et visites. Il ne
+          reçoit jamais le nom, le téléphone ni l&apos;adresse de vos clients.
+        </p>
+        <p>
+          Vos échanges avec l&apos;assistant sont enregistrés dans votre compte, avec un court résumé
+          automatique, pour que l&apos;assistant se souvienne de vos discussions. Ils ne sont pas visibles des
+          autres vendeurs. Vous pouvez effacer la conversation et ce que l&apos;assistant a retenu à tout
+          moment depuis la page de l&apos;assistant. Évitez d&apos;y écrire des données personnelles de vos
+          clients.
+        </p>
+      </section>
+
+      <section className="mt-6 space-y-2">
         <h2 className="text-lg font-semibold">À quoi servent ces données ?</h2>
         <p>
           Uniquement à faire fonctionner le service : vous connecter, afficher votre boutique, transmettre les
@@ -74,7 +92,8 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-semibold">Hébergement et prestataires</h2>
         <p>
           Les données sont stockées chez Supabase (base de données et authentification) et le site est
-          hébergé par Vercel. La connexion Google est fournie par Google.
+          hébergé par Vercel. La connexion Google est fournie par Google. Les réponses des assistants sont
+          produites par un fournisseur d&apos;intelligence artificielle (actuellement Google).
         </p>
       </section>
 

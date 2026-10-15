@@ -10,7 +10,7 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_DEFAULT_MODEL = "claude-haiku-5-5";
 // Par défaut : Gemini (Google AI Studio, offre gratuite limitée). Les noms de modèles changent : voir ASSISTANT_MODEL.
 const DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
-const DEFAULT_COMPAT_MODEL = "gemini-2.5-flash-lite";
+const DEFAULT_COMPAT_MODEL = "gemini-3.1-flash-lite";
 
 /** Vrai si un fournisseur est configuré (sinon les pages affichent « bientôt disponible »). */
 export function assistantEnabled(): boolean {

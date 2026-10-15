@@ -21,7 +21,7 @@ Les trois commandes doivent se terminer sans erreur. Corrigez-les avant de publi
 | `NEXT_PUBLIC_APP_URL` | adresse du site, sans `/` final (ex. `https://wappshop.vercel.app`) |
 | `ADMIN_EMAILS` | votre adresse email de connexion à WappShop (plusieurs : séparées par des virgules). Seules ces adresses accèdent à `/admin` |
 | `ASSISTANT_API_KEY` | clé du fournisseur de l'assistant. Gratuit possible avec Google Gemini : clé créée sur aistudio.google.com (Get API key), offre gratuite limitée |
-| `ASSISTANT_MODEL` | facultatif : nom du modèle (par défaut `gemini-2.5-flash-lite`). Les noms changent : en cas d'erreur, prendre un modèle « Flash » gratuit listé dans AI Studio |
+| `ASSISTANT_MODEL` | facultatif : nom du modèle (par défaut `gemini-3.1-flash-lite`). Les noms changent : en cas d'erreur, prendre un modèle « Flash » gratuit listé dans AI Studio |
 | `ASSISTANT_BASE_URL` | facultatif : autre fournisseur compatible OpenAI (par défaut Gemini : `https://generativelanguage.googleapis.com/v1beta/openai`) |
 | `ANTHROPIC_API_KEY` | facultatif : à la place de `ASSISTANT_API_KEY`, pour utiliser Claude (payant à l'usage) |
 | `ASSISTANT_DAILY_LIMIT` | facultatif : messages par vendeur et par jour (par défaut 30) |
@@ -30,6 +30,7 @@ Après chaque changement de variable : Deployments > Redeploy.
 
 ## 3. Supabase
 
+- **Script `supabase/phase11.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une fois ; relançable sans danger). Il active la mémoire des assistants : la conversation est enregistrée dans le compte (visible sur tous les appareils) et les anciens échanges sont résumés automatiquement. Tant qu'il n'est pas lancé, les assistants fonctionnent mais n'enregistrent rien. À lancer **après** `phase9.sql`.
 - **Script `supabase/phase9.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une fois ; relançable sans danger). Il crée la messagerie administrateur/vendeurs et le compteur de l'assistant. Tant qu'il n'est pas lancé, la messagerie et l'assistant affichent « bientôt disponible ».
 - **Script `supabase/phase8.sql`** : à coller dans Supabase > SQL Editor puis « Run » (une seule fois, sans danger s'il est relancé). Il active les produits en vedette, le numéro WhatsApp du client, l'origine des visiteurs et les statistiques par produit. Tant qu'il n'est pas lancé, le site fonctionne normalement : ces quatre fonctions restent simplement inactives.
 - Authentication > URL Configuration : **Site URL** = adresse du site ; **Redirect URLs** = `{adresse}/auth/callback`.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Mic, Square, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,6 @@ type AssistantChatProps = {
   endpoint?: string;
   suggestions?: string[];
   emptyText?: string;
-  /** Identifiant du compte (boutique ou administrateur) : sépare les conversations de deux comptes sur un même appareil. */
-  scope?: string;
 };
 
 // Ces capacités ne changent jamais pendant la visite : rien à écouter.
@@ -50,54 +48,17 @@ function subscribeNever() {
   return () => {};
 }
 
-// La conversation est gardée dans le navigateur de l'appareil (jamais sur nos serveurs) pour la retrouver en revenant sur la page.
-const STORAGE_PREFIX = "wappshop-assistant:";
-const STORAGE_EVENT = "wappshop-assistant-change";
-const MAX_STORED_TURNS = 40;
-
-function subscribeStorage(callback: () => void) {
-  window.addEventListener(STORAGE_EVENT, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    window.removeEventListener(STORAGE_EVENT, callback);
-    window.removeEventListener("storage", callback);
-  };
+function isHistory(data: unknown): data is { messages: Turn[]; memory: string } {
+  if (!data || typeof data !== "object" || !("messages" in data) || !("memory" in data)) return false;
+  const { messages, memory } = data as { messages: unknown; memory: unknown };
+  return typeof memory === "string" && Array.isArray(messages) && messages.every((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
 }
 
-function readStored(key: string): string {
-  try {
-    return window.localStorage.getItem(key) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeStored(key: string, turns: Turn[]) {
-  try {
-    if (turns.length > 0) window.localStorage.setItem(key, JSON.stringify(turns.slice(-MAX_STORED_TURNS)));
-    else window.localStorage.removeItem(key);
-  } catch {
-    // Stockage refusé (navigation privée, plein) : la conversation reste visible tant que la page est ouverte.
-  }
-  window.dispatchEvent(new Event(STORAGE_EVENT));
-}
-
-function parseTurns(raw: string): Turn[] {
-  try {
-    const data: unknown = JSON.parse(raw);
-    if (!Array.isArray(data)) return [];
-    return data
-      .filter((item): item is Turn => Boolean(item) && typeof item === "object" && (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
-      .slice(-MAX_STORED_TURNS);
-  } catch {
-    return [];
-  }
-}
-
-export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAULT_SUGGESTIONS, emptyText = "Choisissez une question ci-dessous, ou posez la vôtre.", scope = "" }: AssistantChatProps) {
-  const storageKey = `${STORAGE_PREFIX}${endpoint}:${scope}`;
-  const storedRaw = useSyncExternalStore(subscribeStorage, () => readStored(storageKey), () => "");
-  const turns = useMemo(() => parseTurns(storedRaw), [storedRaw]);
+export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAULT_SUGGESTIONS, emptyText = "Choisissez une question ci-dessous, ou posez la vôtre." }: AssistantChatProps) {
+  // La conversation et la mémoire sont enregistrées sur le serveur (dans le compte) : on les charge à l'ouverture.
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [memory, setMemory] = useState("");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,8 +83,28 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(endpoint, { cache: "no-store" });
+        const data: unknown = await response.json().catch(() => null);
+        if (cancelled || !response.ok || !isHistory(data)) return;
+        setTurns(data.messages);
+        setMemory(data.memory);
+      } catch {
+        // Pas de connexion : on repart d'une conversation vide.
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [endpoint]);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [turns, sending]);
+  }, [turns, sending, loadingHistory]);
 
   useEffect(() => {
     autoSendRef.current = autoSend;
@@ -161,10 +142,11 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
 
   async function ask(question: string) {
     const content = question.trim();
-    if (!content || sending) return;
+    if (!content || sending || loadingHistory) return;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    const previous = turns;
     const next: Turn[] = [...turns, { role: "user", content }];
-    writeStored(storageKey, next);
+    setTurns(next);
     setText("");
     setError(null);
     setSending(true);
@@ -172,15 +154,18 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next.slice(-12) }),
+        body: JSON.stringify({ message: content, messages: next.slice(-12) }),
       });
       const data: unknown = await response.json().catch(() => null);
       if (!response.ok || !data || typeof data !== "object" || !("reply" in data) || typeof data.reply !== "string") {
         setError(data && typeof data === "object" && "error" in data && typeof data.error === "string" ? data.error : "L'assistant n'a pas pu répondre. Réessayez.");
+        // La question n'a pas été enregistrée : on la remet dans la zone de saisie pour pouvoir la renvoyer.
+        setTurns(previous);
+        setText(content);
         return;
       }
       const reply = data.reply;
-      writeStored(storageKey, [...next, { role: "assistant", content: reply }]);
+      setTurns([...next, { role: "assistant", content: reply }]);
       if ("remaining" in data && typeof data.remaining === "number") setRemaining(data.remaining);
       if (speak && "speechSynthesis" in window) {
         const utterance = new SpeechSynthesisUtterance(reply);
@@ -189,8 +174,35 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
       }
     } catch {
       setError("Envoi impossible. Vérifiez votre connexion et réessayez.");
+      setTurns(previous);
+      setText(content);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function erase(what: "conversation" | "memory") {
+    const question = what === "conversation" ? "Effacer cette conversation ?" : "Oublier ce que l'assistant a retenu de vos échanges ?";
+    if (!window.confirm(question)) return;
+    try {
+      const response = await fetch(`${endpoint}?what=${what}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("delete failed");
+      if (what === "conversation") setTurns([]);
+      else setMemory("");
+      toast.success(what === "conversation" ? "Conversation effacée" : "Mémoire effacée");
+    } catch {
+      toast.error("Suppression impossible pour le moment. Réessayez.");
+    }
+  }
+
+  // Le résumé est mis à jour en arrière-plan : on le relit quand la personne ouvre le panneau.
+  async function refreshMemory() {
+    try {
+      const response = await fetch(endpoint, { cache: "no-store" });
+      const data: unknown = await response.json().catch(() => null);
+      if (response.ok && isHistory(data)) setMemory(data.memory);
+    } catch {
+      // On garde ce qui est affiché.
     }
   }
 
@@ -206,7 +218,8 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
   return (
     <div>
       <ul aria-label="Conversation avec l'assistant" aria-live="polite" className="mb-3 flex max-h-[55dvh] min-h-40 flex-col gap-2 overflow-y-auto rounded-2xl bg-surface p-3">
-        {turns.length === 0 && <li className="m-auto text-center text-sm text-muted">{emptyText}</li>}
+        {loadingHistory && turns.length === 0 && <li className="m-auto text-center text-sm text-muted">Chargement de la conversation...</li>}
+        {!loadingHistory && turns.length === 0 && <li className="m-auto text-center text-sm text-muted">{emptyText}</li>}
         {turns.map((turn, index) => (
           <li key={index} className={cn("flex max-w-[88%] flex-col", turn.role === "user" ? "items-end self-end" : "items-start self-start")}>
             <p className={cn("whitespace-pre-line break-words rounded-2xl px-3 py-2 text-[15px]", turn.role === "user" ? "bg-brand text-on-brand" : "border border-border bg-background")}>
@@ -229,26 +242,20 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
 
       {turns.length > 0 && (
         <div className="-mt-1 mb-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm("Effacer cette conversation de cet appareil ?")) writeStored(storageKey, []);
-            }}
-            className="min-h-8 cursor-pointer rounded-lg px-2 text-xs text-muted underline-offset-2 hover:underline"
-          >
+          <button type="button" onClick={() => erase("conversation")} className="min-h-8 cursor-pointer rounded-lg px-2 text-xs text-muted underline-offset-2 hover:underline">
             Effacer la conversation
           </button>
         </div>
       )}
 
-      {turns.length === 0 && (
+      {!loadingHistory && turns.length === 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Questions proposées">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion}
               type="button"
               onClick={() => ask(suggestion)}
-              disabled={sending}
+              disabled={sending || loadingHistory}
               className="min-h-9 cursor-pointer rounded-full border border-border bg-background px-3 text-left text-xs hover:bg-surface disabled:opacity-50"
             >
               {suggestion}
@@ -288,7 +295,7 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
             </Button>
           )}
           <span className="flex-1" />
-          <Button type="submit" disabled={sending || text.trim() === ""}>
+          <Button type="submit" disabled={sending || loadingHistory || text.trim() === ""}>
             Envoyer
           </Button>
         </div>
@@ -313,6 +320,24 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
         </div>
         {remaining !== null && <span className="text-xs text-muted">Il vous reste {remaining} message{remaining > 1 ? "s" : ""} aujourd&apos;hui</span>}
       </div>
+
+      <details
+        className="mt-3 rounded-xl border border-border bg-surface p-3 text-sm"
+        onToggle={(event) => {
+          if (event.currentTarget.open) refreshMemory();
+        }}
+      >
+        <summary className="cursor-pointer font-semibold">Ce que l&apos;assistant a retenu</summary>
+        <p className="mt-2 text-xs text-muted">
+          Votre conversation est enregistrée dans votre compte, et les anciens échanges sont résumés automatiquement pour que l&apos;assistant garde l&apos;essentiel. Évitez d&apos;y écrire le nom ou le téléphone de vos clients.
+        </p>
+        <p className="mt-2 whitespace-pre-line break-words">{memory || "Rien pour l'instant : le résumé apparaît après quelques échanges."}</p>
+        {memory && (
+          <button type="button" onClick={() => erase("memory")} className="mt-2 min-h-8 cursor-pointer rounded-lg text-xs text-danger underline underline-offset-2">
+            Oublier ce que l&apos;assistant a retenu
+          </button>
+        )}
+      </details>
     </div>
   );
 }
