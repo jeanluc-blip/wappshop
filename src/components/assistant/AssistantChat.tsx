@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Mic, Square, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,8 @@ type AssistantChatProps = {
   endpoint?: string;
   suggestions?: string[];
   emptyText?: string;
+  /** Identifiant du compte (boutique ou administrateur) : sépare les conversations de deux comptes sur un même appareil. */
+  scope?: string;
 };
 
 // Ces capacités ne changent jamais pendant la visite : rien à écouter.
@@ -48,8 +50,54 @@ function subscribeNever() {
   return () => {};
 }
 
-export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAULT_SUGGESTIONS, emptyText = "Choisissez une question ci-dessous, ou posez la vôtre." }: AssistantChatProps) {
-  const [turns, setTurns] = useState<Turn[]>([]);
+// La conversation est gardée dans le navigateur de l'appareil (jamais sur nos serveurs) pour la retrouver en revenant sur la page.
+const STORAGE_PREFIX = "wappshop-assistant:";
+const STORAGE_EVENT = "wappshop-assistant-change";
+const MAX_STORED_TURNS = 40;
+
+function subscribeStorage(callback: () => void) {
+  window.addEventListener(STORAGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(STORAGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function readStored(key: string): string {
+  try {
+    return window.localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStored(key: string, turns: Turn[]) {
+  try {
+    if (turns.length > 0) window.localStorage.setItem(key, JSON.stringify(turns.slice(-MAX_STORED_TURNS)));
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Stockage refusé (navigation privée, plein) : la conversation reste visible tant que la page est ouverte.
+  }
+  window.dispatchEvent(new Event(STORAGE_EVENT));
+}
+
+function parseTurns(raw: string): Turn[] {
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter((item): item is Turn => Boolean(item) && typeof item === "object" && (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
+      .slice(-MAX_STORED_TURNS);
+  } catch {
+    return [];
+  }
+}
+
+export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAULT_SUGGESTIONS, emptyText = "Choisissez une question ci-dessous, ou posez la vôtre.", scope = "" }: AssistantChatProps) {
+  const storageKey = `${STORAGE_PREFIX}${endpoint}:${scope}`;
+  const storedRaw = useSyncExternalStore(subscribeStorage, () => readStored(storageKey), () => "");
+  const turns = useMemo(() => parseTurns(storedRaw), [storedRaw]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +164,7 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
     if (!content || sending) return;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     const next: Turn[] = [...turns, { role: "user", content }];
-    setTurns(next);
+    writeStored(storageKey, next);
     setText("");
     setError(null);
     setSending(true);
@@ -132,7 +180,7 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
         return;
       }
       const reply = data.reply;
-      setTurns([...next, { role: "assistant", content: reply }]);
+      writeStored(storageKey, [...next, { role: "assistant", content: reply }]);
       if ("remaining" in data && typeof data.remaining === "number") setRemaining(data.remaining);
       if (speak && "speechSynthesis" in window) {
         const utterance = new SpeechSynthesisUtterance(reply);
@@ -178,6 +226,20 @@ export function AssistantChat({ endpoint = "/api/assistant", suggestions = DEFAU
         )}
         <div ref={endRef} />
       </ul>
+
+      {turns.length > 0 && (
+        <div className="-mt-1 mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("Effacer cette conversation de cet appareil ?")) writeStored(storageKey, []);
+            }}
+            className="min-h-8 cursor-pointer rounded-lg px-2 text-xs text-muted underline-offset-2 hover:underline"
+          >
+            Effacer la conversation
+          </button>
+        </div>
+      )}
 
       {turns.length === 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Questions proposées">

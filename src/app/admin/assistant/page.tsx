@@ -16,7 +16,7 @@ const SUGGESTIONS = [
 ];
 
 export default async function AdminAssistantPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const enabled = assistantEnabled();
 
   return (
@@ -27,7 +27,7 @@ export default async function AdminAssistantPage() {
         et quelles idées leur donner. Il propose, vous décidez : il n&apos;envoie rien lui-même.
       </p>
       {enabled ? (
-        <AssistantChat endpoint="/api/admin-assistant" suggestions={SUGGESTIONS} emptyText="Choisissez une question ci-dessous, ou posez la vôtre. Vous pouvez aussi dicter." />
+        <AssistantChat endpoint="/api/admin-assistant" scope={admin.id} suggestions={SUGGESTIONS} emptyText="Choisissez une question ci-dessous, ou posez la vôtre. Vous pouvez aussi dicter." />
       ) : (
         <p role="note" className="rounded-xl border border-border bg-surface p-3 text-sm">
           L&apos;assistant n&apos;est pas encore activé : ajoutez la variable <b>ASSISTANT_API_KEY</b> (voir MISE_EN_LIGNE.md) dans Vercel (Settings &gt; Environment Variables), puis redéployez.
