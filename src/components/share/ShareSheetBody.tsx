@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -21,14 +21,17 @@ type ShareSheetBodyProps = {
 const plain = (value: string) => value.replace(/[\u00a0\u202f]/g, " ");
 
 /** Partage sur tous les réseaux : menu natif du téléphone, boutons directs, image à télécharger, lien et texte à copier. */
+function subscribeNever() {
+  return () => {};
+}
+
 export function ShareSheetBody({ shopName, shopSlug, shopLogoUrl, product }: ShareSheetBodyProps) {
   const [format, setFormat] = useState<ShareFormat>("post");
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => setOrigin(window.location.origin), []);
+  // Adresse du site : connue seulement dans le navigateur (vide pendant le rendu serveur).
+  const origin = useSyncExternalStore(subscribeNever, () => window.location.origin, () => "");
 
   const promo = product && product.badge === "promo" && product.oldPrice !== null && product.oldPrice > product.price;
   const priceText = product ? plain(formatPrice(product.price)) : "";
@@ -41,8 +44,11 @@ export function ShareSheetBody({ shopName, shopSlug, shopLogoUrl, product }: Sha
     if (!origin) return;
     let cancelled = false;
     let created: string | null = null;
+    // Remise à zéro volontaire avant de refabriquer l'image (format ou produit changé).
+    /* eslint-disable react-hooks/set-state-in-effect */
     setBlob(null);
     setFailed(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
     makeShareImage({
       format,
       shopName,

@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   };
 
-  if (!isSignedIn && pathname.startsWith("/dashboard")) return redirectTo("/login");
+  if (!isSignedIn && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) return redirectTo("/login");
   if (isSignedIn && pathname === "/login") return redirectTo("/dashboard");
 
   return response;
