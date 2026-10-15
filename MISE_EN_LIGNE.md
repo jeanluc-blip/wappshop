@@ -20,8 +20,10 @@ Les trois commandes doivent se terminer sans erreur. Corrigez-les avant de publi
 | `SUPABASE_SECRET_KEY` | clé secrète (serveur uniquement, jamais dans GitHub) |
 | `NEXT_PUBLIC_APP_URL` | adresse du site, sans `/` final (ex. `https://wappshop.vercel.app`) |
 | `ADMIN_EMAILS` | votre adresse email de connexion à WappShop (plusieurs : séparées par des virgules). Seules ces adresses accèdent à `/admin` |
-| `ANTHROPIC_API_KEY` | clé de l'API Anthropic pour l'assistant de vente (console.anthropic.com > API keys). Facturée à l'usage |
-| `ASSISTANT_MODEL` | facultatif : modèle de l'assistant (par défaut `claude-haiku-5-5`) |
+| `ASSISTANT_API_KEY` | clé du fournisseur de l'assistant. Gratuit possible avec Google Gemini : clé créée sur aistudio.google.com (Get API key), offre gratuite limitée |
+| `ASSISTANT_MODEL` | facultatif : nom du modèle (par défaut `gemini-2.5-flash-lite`). Les noms changent : en cas d'erreur, prendre un modèle « Flash » gratuit listé dans AI Studio |
+| `ASSISTANT_BASE_URL` | facultatif : autre fournisseur compatible OpenAI (par défaut Gemini : `https://generativelanguage.googleapis.com/v1beta/openai`) |
+| `ANTHROPIC_API_KEY` | facultatif : à la place de `ASSISTANT_API_KEY`, pour utiliser Claude (payant à l'usage) |
 | `ASSISTANT_DAILY_LIMIT` | facultatif : messages par vendeur et par jour (par défaut 30) |
 
 Après chaque changement de variable : Deployments > Redeploy.

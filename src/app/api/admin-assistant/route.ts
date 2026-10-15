@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getAdmin } from "@/lib/admin";
 import { buildAdminContext } from "@/lib/admin-assistant-context";
-import { askModel, cleanHistory } from "@/lib/assistant-llm";
+import { askModel, assistantEnabled, cleanHistory } from "@/lib/assistant-llm";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // Assistant de l'administrateur : aide à accompagner les vendeurs (priorités, messages à envoyer, idées d'annonces).
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const admin = await getAdmin();
   if (!admin) return error("Réservé à l'administrateur.", 403);
   if (isLimited(admin.id)) return error("Trop de messages en peu de temps. Patientez une minute.", 429);
-  if (!process.env.ANTHROPIC_API_KEY) return error("L'assistant n'est pas encore activé : ajoutez ANTHROPIC_API_KEY dans Vercel.", 503);
+  if (!assistantEnabled()) return error("L'assistant n'est pas encore activé : ajoutez ASSISTANT_API_KEY dans Vercel.", 503);
 
   if (Number(request.headers.get("content-length") ?? 0) > 40_000) return error("Demande trop volumineuse.", 413);
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));

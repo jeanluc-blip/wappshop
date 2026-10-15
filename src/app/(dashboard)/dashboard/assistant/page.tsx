@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AssistantChat } from "@/components/assistant/AssistantChat";
+import { assistantEnabled } from "@/lib/assistant-llm";
 import { requireShop } from "@/lib/shop";
 
 export const metadata: Metadata = { title: "Assistant de vente" };
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AssistantPage() {
   const { shop } = await requireShop();
-  const enabled = Boolean(process.env.ANTHROPIC_API_KEY);
+  const enabled = assistantEnabled();
 
   return (
     <>

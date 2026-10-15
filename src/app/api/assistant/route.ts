@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { askModel, cleanHistory } from "@/lib/assistant-llm";
+import { askModel, assistantEnabled, cleanHistory } from "@/lib/assistant-llm";
 import { buildSellerContext } from "@/lib/assistant-context";
 import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 import { getShopContext } from "@/lib/shop";
@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 // Assistant de vente : répond aux questions du vendeur en s'appuyant sur les chiffres de SA boutique.
-// Clé : ANTHROPIC_API_KEY (Vercel). Modèle : ASSISTANT_MODEL (par défaut claude-haiku-5-5). Limite par vendeur : ASSISTANT_DAILY_LIMIT (30/jour).
+// Fournisseur : ASSISTANT_API_KEY / ASSISTANT_BASE_URL / ASSISTANT_MODEL (ou ANTHROPIC_API_KEY), voir lib/assistant-llm.ts. Limite par vendeur : ASSISTANT_DAILY_LIMIT (30/jour).
 
 const isLimited = createRateLimiter(10, 60_000); // 10 messages par minute et par adresse IP
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (!ctx) return error("Votre session a expiré. Reconnectez-vous.", 401);
   if (isLimited(`${clientIp(request)}:${ctx.user.id}`)) return error("Trop de messages en peu de temps. Patientez une minute.", 429);
 
-  if (!process.env.ANTHROPIC_API_KEY) return error("L'assistant n'est pas encore activé. Il sera disponible très bientôt.", 503);
+  if (!assistantEnabled()) return error("L'assistant n'est pas encore activé. Il sera disponible très bientôt.", 503);
 
   if (Number(request.headers.get("content-length") ?? 0) > 40_000) return error("Demande trop volumineuse.", 413);
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
